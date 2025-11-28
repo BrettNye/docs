@@ -1,0 +1,57 @@
+---
+title: 'Update Scope'
+api: 'PATCH /scopes/{id}'
+description: 'Update an existing scope'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scope to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Updated display name for the scope
+</ParamField>
+
+<ParamField body="externalId" type="string">
+  Updated external identifier
+</ParamField>
+
+## Response
+
+Returns the updated scope object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/scopes/scope_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Platform Engineering Team"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.patch('https://api.example.com/scopes/scope_123', {
+  name: 'Platform Engineering Team',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "scope_123",
+  "name": "Platform Engineering Team",
+  "typeId": "type_team",
+  "externalId": "team-eng"
+}
+```
+</ResponseExample>

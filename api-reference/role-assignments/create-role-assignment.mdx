@@ -1,0 +1,52 @@
+---
+title: 'Create Role Assignment'
+api: 'POST /role-assignments'
+description: 'Assign a role to a membership'
+---
+
+## Request Body
+
+<ParamField body="roleId" type="string" required>
+  The role ID to assign
+</ParamField>
+
+<ParamField body="membershipId" type="string" required>
+  The membership ID to assign the role to
+</ParamField>
+
+## Response
+
+Returns the created role assignment object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/role-assignments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "roleId": "role_456",
+    "membershipId": "mem_123"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/role-assignments', {
+  roleId: 'role_456',
+  membershipId: 'mem_123',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "ra_789",
+  "roleId": "role_456",
+  "membershipId": "mem_123"
+}
+```
+</ResponseExample>

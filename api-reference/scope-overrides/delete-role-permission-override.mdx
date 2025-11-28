@@ -1,0 +1,38 @@
+---
+title: 'Delete Role-Permission Override'
+api: 'DELETE /scope-overrides/role-permissions/{id}'
+description: 'Delete a role-permission override by its ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The override ID to delete
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/scope-overrides/role-permissions/override_789' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/scope-overrides/role-permissions/override_789', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

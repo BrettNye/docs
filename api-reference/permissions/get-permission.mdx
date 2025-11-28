@@ -1,0 +1,55 @@
+---
+title: 'Get Permission'
+api: 'GET /permissions/{id}'
+description: 'Retrieve a permission by its unique identifier'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the permission
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the permission
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the permission
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Description of the permission
+</ResponseField>
+
+<ResponseField name="scopeId" type="string">
+  The scope this permission belongs to
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/permissions/perm_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/permissions/perm_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "perm_123",
+  "name": "read:documents",
+  "description": "Can read documents",
+  "scopeId": "scope_456"
+}
+```
+</ResponseExample>

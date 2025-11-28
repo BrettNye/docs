@@ -1,0 +1,46 @@
+---
+title: 'Delete Scope Type Hierarchy Edge'
+api: 'DELETE /scope-type-hierarchy/{parentTypeId}/{childTypeId}'
+description: 'Remove a parent-child relationship between two scope types'
+---
+
+## Path Parameters
+
+<ParamField path="parentTypeId" type="string" required>
+  The parent scope type ID
+</ParamField>
+
+<ParamField path="childTypeId" type="string" required>
+  The child scope type ID
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<Warning>
+  Removing a type hierarchy edge may affect existing scope hierarchies that rely on this relationship.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/scope-type-hierarchy/type_org/type_team' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/scope-type-hierarchy/type_org/type_team', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

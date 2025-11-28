@@ -1,97 +1,91 @@
 ---
 title: "Introduction"
-description: "Welcome to the new home for your documentation"
+description: "Unified authorization for users, API keys, services, and AI agents"
 ---
 
-## Setting up
+## What is Bedrock?
 
-Get your documentation site up and running in minutes.
+Bedrock is a comprehensive authorization and access control system designed to govern **both humans and AI agents** within your organization. As AI agents become integral to workflows, Bedrock provides the infrastructure to manage their permissions alongside traditional users.
+
+<CardGroup cols={2}>
+  <Card title="Unified Subject Model" icon="users">
+    Manage users, API keys, services, and AI agents with a single authorization model
+  </Card>
+  <Card title="Hierarchical Scopes" icon="sitemap">
+    Define organizational structures with inherited permissions
+  </Card>
+  <Card title="Fine-grained Control" icon="sliders">
+    Override inherited permissions at any level in your hierarchy
+  </Card>
+  <Card title="Agent Governance" icon="robot">
+    Apply the same governance to AI agents that you apply to humans
+  </Card>
+</CardGroup>
+
+## Get Started
 
 <Card
-  title="Start here"
+  title="Quickstart Guide"
   icon="rocket"
   href="/quickstart"
   horizontal
 >
-  Follow our three step quickstart guide.
+  Set up Bedrock and create your first authorization structure in minutes.
 </Card>
 
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
+## Use Cases
 
 <Columns cols={2}>
   <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
+    title="User Governance"
+    icon="user-shield"
+    href="/guides/user-governance"
   >
-    Edit your docs locally and preview them in real time.
+    Traditional RBAC for users across your organization hierarchy.
   </Card>
   <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
+    title="Agent Governance"
+    icon="robot"
+    href="/guides/agent-governance"
   >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+    Control what AI agents can access and do within your systems.
   </Card>
   <Card
-    title="API documentation"
+    title="Multi-tenant Authorization"
+    icon="building"
+    href="/guides/multi-tenant"
+  >
+    Isolate permissions across tenants with hierarchical scopes.
+  </Card>
+  <Card
+    title="API Reference"
     icon="terminal"
     href="/api-reference/introduction"
   >
-    Auto-generate API documentation from OpenAPI specifications.
+    Complete API documentation for all Bedrock endpoints.
   </Card>
 </Columns>
 
-## Create beautiful pages
+## Why Bedrock for AI Agents?
 
-Everything you need to create world-class documentation.
+As organizations deploy AI agents (LLM-powered assistants, autonomous workflows, MCP servers), they face new challenges:
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+- **What can this agent access?** — Agents need scoped permissions just like users
+- **Can I trust this agent in this context?** — Different scopes may require different agent capabilities
+- **How do I audit agent actions?** — Unified subject model enables consistent logging
+- **How do I revoke agent access?** — Same mechanisms as revoking user access
 
-## Need inspiration?
+Bedrock treats agents as first-class subjects, enabling you to:
+
+1. Register agents with the `agent` subject type
+2. Add agents to scopes via memberships
+3. Assign roles with specific permissions
+4. Override permissions at child scopes as needed
 
 <Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
+  title="Learn more about Agent Governance"
+  icon="arrow-right"
+  href="/guides/agent-governance"
 >
-  Browse our showcase of exceptional documentation sites.
+  See how to set up and manage AI agent permissions
 </Card>

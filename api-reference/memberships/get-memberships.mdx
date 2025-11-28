@@ -1,0 +1,69 @@
+---
+title: 'Get Memberships'
+api: 'GET /memberships'
+description: 'Get memberships for a subject in one or more scopes'
+---
+
+## Query Parameters
+
+<ParamField query="subjectId" type="string" required>
+  The subject ID to get memberships for
+</ParamField>
+
+<ParamField query="scopeId" type="string">
+  Single scope ID to filter by
+</ParamField>
+
+<ParamField query="scopeIds" type="string">
+  Comma-separated list of scope IDs to filter by
+</ParamField>
+
+<Note>
+  Provide either `scopeId` for a single scope or `scopeIds` for multiple scopes.
+</Note>
+
+## Response
+
+Returns an array of membership objects.
+
+<ResponseField name="memberships" type="array">
+  <Expandable title="Membership object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the membership
+    </ResponseField>
+    <ResponseField name="subjectId" type="string">
+      The subject ID
+    </ResponseField>
+    <ResponseField name="scopeId" type="string">
+      The scope ID
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/memberships?subjectId=sub_123&scopeId=scope_456' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/memberships', {
+  params: { subjectId: 'sub_123', scopeId: 'scope_456' },
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "mem_789",
+    "subjectId": "sub_123",
+    "scopeId": "scope_456"
+  }
+]
+```
+</ResponseExample>

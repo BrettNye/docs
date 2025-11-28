@@ -1,0 +1,59 @@
+---
+title: 'Create Permission'
+api: 'POST /permissions'
+description: 'Create a new permission within a scope'
+---
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name for the permission (e.g., `read:documents`)
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description of what this permission allows
+</ParamField>
+
+<ParamField body="scopeId" type="string" required>
+  The scope ID where this permission will be defined
+</ParamField>
+
+## Response
+
+Returns the created permission object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "delete:documents",
+    "description": "Can delete documents",
+    "scopeId": "scope_123"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/permissions', {
+  name: 'delete:documents',
+  description: 'Can delete documents',
+  scopeId: 'scope_123',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "perm_456",
+  "name": "delete:documents",
+  "description": "Can delete documents",
+  "scopeId": "scope_123"
+}
+```
+</ResponseExample>

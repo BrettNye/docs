@@ -1,0 +1,42 @@
+---
+title: 'Delete Membership'
+api: 'DELETE /memberships/{id}'
+description: 'Remove a subject from a scope by deleting the membership'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the membership to delete
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<Warning>
+  Deleting a membership will also remove all role assignments associated with it.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/memberships/mem_789' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/memberships/mem_789', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

@@ -1,0 +1,38 @@
+---
+title: 'Delete Role Permission'
+api: 'DELETE /role-permissions/{id}'
+description: 'Delete a role-permission mapping by its ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the role-permission mapping to delete
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/role-permissions/rp_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/role-permissions/rp_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

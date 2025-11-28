@@ -1,0 +1,289 @@
+---
+title: 'Multi-tenant Authorization'
+description: 'Isolating permissions across tenants with hierarchical scopes'
+icon: 'building'
+---
+
+## Overview
+
+Multi-tenant applications need strong isolation between tenants while sharing common infrastructure. Bedrock's hierarchical scope model naturally supports multi-tenancy, allowing you to define tenant-specific roles, permissions, and access controls.
+
+## Multi-tenant Architecture
+
+```
+Platform (global scope)
+├── Tenant A (tenant scope)
+│   ├── Team A1
+│   └── Team A2
+├── Tenant B (tenant scope)
+│   ├── Team B1
+│   └── Team B2
+└── Tenant C (tenant scope)
+    └── Team C1
+```
+
+## Setting Up Multi-tenancy
+
+### 1. Define Scope Types
+
+```bash
+# Platform level (your SaaS)
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Platform", "description": "Top-level platform scope"}'
+
+# Tenant level (your customers)
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Tenant", "description": "Customer tenant"}'
+
+# Team level (within tenants)
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Team", "description": "Team within a tenant"}'
+
+# Define hierarchy
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -d '{"parentTypeId": "type_platform", "childTypeId": "type_tenant"}'
+
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -d '{"parentTypeId": "type_tenant", "childTypeId": "type_team"}'
+```
+
+### 2. Create Platform and Tenants
+
+```bash
+# Platform scope
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "My SaaS Platform", "typeId": "type_platform"}'
+
+# Tenant scopes
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Acme Corp", "typeId": "type_tenant", "externalId": "tenant-acme"}'
+
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Globex Inc", "typeId": "type_tenant", "externalId": "tenant-globex"}'
+
+# Link tenants to platform
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -d '{"parentScopeId": "scope_platform", "childScopeId": "scope_acme"}'
+
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -d '{"parentScopeId": "scope_platform", "childScopeId": "scope_globex"}'
+```
+
+### 3. Define Platform-wide and Tenant-specific Roles
+
+```bash
+# Platform-wide roles (for your internal team)
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Platform Admin",
+    "description": "Full platform access",
+    "scopeId": "scope_platform"
+  }'
+
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Support Agent",
+    "description": "Customer support access",
+    "scopeId": "scope_platform"
+  }'
+
+# Tenant-level roles (available to all tenants)
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Tenant Admin",
+    "description": "Full tenant access",
+    "scopeId": "scope_platform"
+  }'
+
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Tenant Member",
+    "description": "Basic tenant access",
+    "scopeId": "scope_platform"
+  }'
+
+# Tenant-specific roles (only for Acme)
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Acme Auditor",
+    "description": "Acme-specific audit role",
+    "scopeId": "scope_acme"
+  }'
+```
+
+## Tenant Isolation
+
+### Users Can Only Access Their Tenant
+
+```bash
+# Acme user
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "user", "externalId": "acme-user-1"}'
+
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_acme_user", "scopeId": "scope_acme"}'
+
+# This user has NO access to Globex tenant
+# They can only access scope_acme and its children
+```
+
+### Cross-tenant Access (Support Agents)
+
+```bash
+# Support agent needs access to multiple tenants
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "user", "externalId": "support-agent-1"}'
+
+# Add to platform level with Support Agent role
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_support", "scopeId": "scope_platform"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_support_agent", "membershipId": "mem_support_platform"}'
+
+# Support agent can now access all tenants (based on role permissions)
+```
+
+## Agents in Multi-tenant Environments
+
+### Tenant-specific Agents
+
+Each tenant can have their own AI agents:
+
+```bash
+# Acme's coding assistant
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "type": "agent",
+    "externalId": "acme-coding-assistant",
+    "metadata": {"tenant": "acme", "purpose": "code-review"}
+  }'
+
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_acme_agent", "scopeId": "scope_acme"}'
+
+# This agent can ONLY access Acme's scope
+```
+
+### Platform-wide Agents
+
+Some agents may need cross-tenant access:
+
+```bash
+# Platform analytics agent
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "type": "agent",
+    "externalId": "platform-analytics-agent",
+    "metadata": {"purpose": "cross-tenant-analytics"}
+  }'
+
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_analytics_agent", "scopeId": "scope_platform"}'
+
+# Assign read-only role
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_analytics_reader", "membershipId": "mem_analytics_platform"}'
+```
+
+### Restricting Platform Agents in Specific Tenants
+
+Some tenants may want to opt out of platform-wide agents:
+
+```bash
+# Globex doesn't want platform agents accessing their data
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -d '{
+    "childScopeId": "scope_globex",
+    "roleId": "role_analytics_reader",
+    "state": "disabled"
+  }'
+```
+
+## Permission Patterns
+
+### Tenant-isolated Permissions
+
+```bash
+# Create permissions at platform level (inherited by all tenants)
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "read:data", "scopeId": "scope_platform"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "write:data", "scopeId": "scope_platform"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "admin:tenant", "scopeId": "scope_platform"}'
+```
+
+### Tenant-specific Permission Overrides
+
+```bash
+# Acme wants to disable data deletion
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_acme",
+    "permissionId": "perm_delete_data",
+    "state": "disabled"
+  }'
+```
+
+## Querying Tenant Access
+
+When a request comes in, determine which tenant the user/agent belongs to:
+
+```typescript
+async function getTenantAccess(subjectId: string, tenantId: string) {
+  // Get memberships for this subject in the tenant scope
+  const memberships = await fetch(
+    `/memberships?subjectId=${subjectId}&scopeId=${tenantId}`
+  );
+  
+  if (memberships.length === 0) {
+    // Check if they have platform-level access
+    const platformMemberships = await fetch(
+      `/memberships?subjectId=${subjectId}&scopeId=scope_platform`
+    );
+    
+    if (platformMemberships.length === 0) {
+      return { hasAccess: false };
+    }
+    
+    // They have platform access - check if it applies to this tenant
+    return { hasAccess: true, level: 'platform' };
+  }
+  
+  return { hasAccess: true, level: 'tenant' };
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use external IDs for tenant mapping">
+    Store your application's tenant ID as the scope's `externalId` for easy lookup.
+  </Accordion>
+  <Accordion title="Define common roles at platform level">
+    Roles like "Tenant Admin" and "Tenant Member" should be defined at the platform level so all tenants inherit them.
+  </Accordion>
+  <Accordion title="Allow tenant-specific customization">
+    Let tenants create their own roles and permissions within their scope.
+  </Accordion>
+  <Accordion title="Audit cross-tenant access">
+    Log all access by platform-level users/agents to tenant data.
+  </Accordion>
+  <Accordion title="Respect tenant opt-outs">
+    Use scope overrides to respect tenant preferences about platform-wide features.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+    Fine-tune permissions at tenant level
+  </Card>
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Manage agents across tenants
+  </Card>
+</CardGroup>

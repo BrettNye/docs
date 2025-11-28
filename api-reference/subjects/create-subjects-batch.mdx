@@ -1,0 +1,107 @@
+---
+title: 'Create Subjects (Batch)'
+api: 'POST /subjects/batch'
+description: 'Create multiple subjects in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple subjects in a single API call. This is more efficient than making individual requests and supports in-batch ID references.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `subject_{uuidv7}`. You can optionally provide your own IDs for in-batch references.
+</Info>
+
+## Request Body
+
+Array of subject objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Useful for referencing within the same batch. Must be unique.
+</ParamField>
+
+<ParamField body="[].subjectType" type="string" required>
+  Subject type. One of: `user`, `api_key`, `service`, `agent`
+</ParamField>
+
+<ParamField body="[].externalId" type="string" required>
+  External identifier for the subject
+</ParamField>
+
+<ParamField body="[].displayName" type="string">
+  Display name for the subject
+</ParamField>
+
+<ParamField body="[].meta" type="object">
+  Optional metadata to associate with the subject
+</ParamField>
+
+## Response
+
+Returns an array of created subject objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/subjects/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "subject_user_jane",
+      "subjectType": "user",
+      "externalId": "user-jane-doe",
+      "displayName": "Jane Doe",
+      "meta": {"email": "jane@acme.com"}
+    },
+    {
+      "subjectType": "agent",
+      "externalId": "coding-assistant-v1",
+      "displayName": "Coding Assistant",
+      "meta": {"model": "claude-3"}
+    }
+  ]'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/subjects/batch', [
+  {
+    id: 'subject_user_jane',
+    subjectType: 'user',
+    externalId: 'user-jane-doe',
+    displayName: 'Jane Doe',
+    meta: { email: 'jane@acme.com' },
+  },
+  {
+    subjectType: 'agent',
+    externalId: 'coding-assistant-v1',
+    displayName: 'Coding Assistant',
+    meta: { model: 'claude-3' },
+  },
+], {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "subject_user_jane",
+    "subjectType": "user",
+    "externalId": "user-jane-doe",
+    "displayName": "Jane Doe",
+    "meta": {"email": "jane@acme.com"}
+  },
+  {
+    "id": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "subjectType": "agent",
+    "externalId": "coding-assistant-v1",
+    "displayName": "Coding Assistant",
+    "meta": {"model": "claude-3"}
+  }
+]
+```
+</ResponseExample>

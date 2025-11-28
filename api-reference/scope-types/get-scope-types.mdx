@@ -1,0 +1,60 @@
+---
+title: 'Get Scope Types'
+api: 'GET /scope-types'
+description: 'Retrieve all scope types in the system'
+---
+
+## Response
+
+Returns an array of all scope type objects.
+
+<ResponseField name="scopeTypes" type="array">
+  <Expandable title="Scope Type object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the scope type
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name of the scope type
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Description of the scope type
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scope-types' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scope-types', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "type_org",
+    "name": "Organization",
+    "description": "Top-level organization scope"
+  },
+  {
+    "id": "type_team",
+    "name": "Team",
+    "description": "Team within an organization"
+  },
+  {
+    "id": "type_project",
+    "name": "Project",
+    "description": "Project within a team"
+  }
+]
+```
+</ResponseExample>

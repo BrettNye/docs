@@ -1,0 +1,238 @@
+---
+title: 'User Governance'
+description: 'Managing user access across your organization with Bedrock'
+icon: 'user-shield'
+---
+
+## Overview
+
+User governance in Bedrock follows a hierarchical Role-Based Access Control (RBAC) model. Users are added to scopes via memberships, assigned roles, and inherit permissions from those roles. This guide covers common patterns for managing user access.
+
+## Core Concepts
+
+<CardGroup cols={2}>
+  <Card title="Subjects" icon="user">
+    Users are registered as subjects with `type: "user"`
+  </Card>
+  <Card title="Memberships" icon="id-card">
+    Memberships connect users to scopes
+  </Card>
+  <Card title="Roles" icon="user-shield">
+    Roles group permissions together
+  </Card>
+  <Card title="Permissions" icon="key">
+    Permissions define specific actions
+  </Card>
+</CardGroup>
+
+## Example: Enterprise Organization
+
+Let's set up a typical enterprise structure with organizations, departments, and teams.
+
+### 1. Define the Hierarchy
+
+```bash
+# Create scope types
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Organization"}'
+
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Department"}'
+
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{"name": "Team"}'
+
+# Define hierarchy: Org → Department → Team
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -d '{"parentTypeId": "type_org", "childTypeId": "type_dept"}'
+
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -d '{"parentTypeId": "type_dept", "childTypeId": "type_team"}'
+```
+
+### 2. Create Scopes
+
+```bash
+# Organization
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Acme Corp", "typeId": "type_org"}'
+
+# Departments
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Engineering", "typeId": "type_dept"}'
+
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Marketing", "typeId": "type_dept"}'
+
+# Teams
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Platform Team", "typeId": "type_team"}'
+
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"name": "Frontend Team", "typeId": "type_team"}'
+
+# Link hierarchy
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -d '{"parentScopeId": "scope_acme", "childScopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -d '{"parentScopeId": "scope_engineering", "childScopeId": "scope_platform"}'
+```
+
+### 3. Define Roles at Different Levels
+
+Roles can be defined at any scope level and inherited by child scopes:
+
+```bash
+# Organization-wide roles
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Org Admin",
+    "description": "Full organization access",
+    "scopeId": "scope_acme"
+  }'
+
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Org Member",
+    "description": "Basic organization access",
+    "scopeId": "scope_acme"
+  }'
+
+# Department-specific roles
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Dept Manager",
+    "description": "Department management access",
+    "scopeId": "scope_engineering"
+  }'
+
+# Team-specific roles
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Team Lead",
+    "description": "Team leadership access",
+    "scopeId": "scope_platform"
+  }'
+```
+
+### 4. Add Users with Different Access Levels
+
+```bash
+# Create users
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "user", "externalId": "ceo-john", "metadata": {"name": "John CEO"}}'
+
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "user", "externalId": "eng-manager-sarah", "metadata": {"name": "Sarah"}}'
+
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "user", "externalId": "dev-mike", "metadata": {"name": "Mike"}}'
+
+# CEO gets Org Admin at organization level
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_john", "scopeId": "scope_acme"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_org_admin", "membershipId": "mem_john_acme"}'
+
+# Sarah is Engineering Department Manager
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_sarah", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_dept_manager", "membershipId": "mem_sarah_eng"}'
+
+# Mike is a Platform Team member
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_mike", "scopeId": "scope_platform"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_org_member", "membershipId": "mem_mike_platform"}'
+```
+
+## Common Patterns
+
+### Pattern 1: Multiple Team Membership
+
+Users can belong to multiple teams with different roles:
+
+```bash
+# Mike is also on the Frontend team with a different role
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_mike", "scopeId": "scope_frontend"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_team_lead", "membershipId": "mem_mike_frontend"}'
+```
+
+### Pattern 2: Restricting Inherited Permissions
+
+Use scope overrides to restrict permissions at child scopes:
+
+```bash
+# Disable delete permission for the Platform team
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_platform",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+### Pattern 3: Temporary Elevated Access
+
+Assign additional roles for temporary access:
+
+```bash
+# Give Mike temporary admin access
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_team_lead", "membershipId": "mem_mike_platform"}'
+
+# Later, remove the elevated access
+curl -X DELETE 'https://api.example.com/role-assignments/role_team_lead/mem_mike_platform'
+```
+
+## Permission Inheritance
+
+Permissions flow down the scope hierarchy:
+
+```
+Organization (Org Admin, Org Member roles)
+    ↓ inherits
+Department (Dept Manager role)
+    ↓ inherits
+Team (Team Lead role)
+```
+
+<Note>
+  Users at a parent scope can access child scopes based on their role permissions. Use scope overrides to restrict this inheritance when needed.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive role names">
+    Name roles based on their function, not the person. Use "Engineering Manager" instead of "Sarah's Role".
+  </Accordion>
+  <Accordion title="Define permissions at the highest applicable level">
+    Create permissions at the organization level if they apply across the organization. This makes them available to all child scopes.
+  </Accordion>
+  <Accordion title="Use scope overrides sparingly">
+    Overrides add complexity. Design your role structure to minimize the need for overrides.
+  </Accordion>
+  <Accordion title="Audit regularly">
+    Periodically review memberships and role assignments to ensure they're still appropriate.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Apply similar patterns to AI agents
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+    Fine-tune inherited permissions
+  </Card>
+</CardGroup>

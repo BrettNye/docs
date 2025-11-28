@@ -1,0 +1,351 @@
+---
+title: 'Agent Governance'
+description: 'Managing AI agent access and permissions with Bedrock'
+icon: 'robot'
+---
+
+## Overview
+
+As AI agents become integral to workflows—coding assistants, autonomous workflows, MCP servers, and more—organizations need robust governance. Bedrock treats agents as first-class subjects, enabling you to apply the same authorization model to agents that you use for humans.
+
+## Why Agent Governance Matters
+
+<CardGroup cols={2}>
+  <Card title="Principle of Least Privilege" icon="shield-check">
+    Agents should only access what they need for their specific task
+  </Card>
+  <Card title="Context-Aware Access" icon="sitemap">
+    Different scopes may require different agent capabilities
+  </Card>
+  <Card title="Auditability" icon="clipboard-list">
+    Track what agents access and do across your organization
+  </Card>
+  <Card title="Revocability" icon="ban">
+    Quickly revoke agent access when needed
+  </Card>
+</CardGroup>
+
+## Agent Subject Types
+
+Bedrock supports multiple subject types for different use cases:
+
+| Type | Use Case | Example |
+|------|----------|---------|
+| `agent` | AI assistants and autonomous agents | Claude, GPT-4, custom LLM agents |
+| `service` | Backend services and microservices | Payment processor, notification service |
+| `api_key` | API integrations | Third-party integrations, webhooks |
+
+## Example: Coding Assistant Agent
+
+Let's set up a coding assistant with appropriate permissions for a development team.
+
+### 1. Register the Agent
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "agent",
+    "externalId": "coding-assistant-v1",
+    "metadata": {
+      "name": "Coding Assistant",
+      "model": "claude-3-sonnet",
+      "version": "1.0.0",
+      "capabilities": ["code-review", "code-generation", "documentation"]
+    }
+  }'
+```
+
+### 2. Create Agent-Specific Roles
+
+Define roles tailored for agent capabilities:
+
+```bash
+# Read-only code access
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Code Reader",
+    "description": "Can read code and documentation",
+    "scopeId": "scope_engineering"
+  }'
+
+# Code modification access
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Code Writer",
+    "description": "Can read and modify code",
+    "scopeId": "scope_engineering"
+  }'
+
+# Full agent access (use sparingly)
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Autonomous Agent",
+    "description": "Full autonomous access",
+    "scopeId": "scope_engineering"
+  }'
+```
+
+### 3. Define Agent Permissions
+
+Create granular permissions for agent actions:
+
+```bash
+# Code permissions
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "read:code", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "write:code", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "execute:code", "scopeId": "scope_engineering"}'
+
+# Infrastructure permissions
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "read:infrastructure", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "modify:infrastructure", "scopeId": "scope_engineering"}'
+
+# Data permissions
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "read:data", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "write:data", "scopeId": "scope_engineering"}'
+
+# Assign to roles
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_code_reader", "permissionId": "perm_read_code"}'
+
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_code_writer", "permissionId": "perm_read_code"}'
+
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_code_writer", "permissionId": "perm_write_code"}'
+```
+
+### 4. Add Agent to Scope with Restricted Role
+
+```bash
+# Add agent to engineering scope
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "subjectId": "sub_coding_assistant",
+    "scopeId": "scope_engineering"
+  }'
+
+# Assign Code Reader role (read-only by default)
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_code_reader",
+    "membershipId": "mem_agent_eng"
+  }'
+```
+
+## Advanced Patterns
+
+### Pattern 1: Scope-Specific Agent Permissions
+
+Different teams may want different agent capabilities:
+
+```bash
+# Platform team allows code writing
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_coding_assistant", "scopeId": "scope_platform"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_code_writer", "membershipId": "mem_agent_platform"}'
+
+# Security team restricts to read-only
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "sub_coding_assistant", "scopeId": "scope_security"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_code_reader", "membershipId": "mem_agent_security"}'
+```
+
+### Pattern 2: Override Agent Permissions at Child Scopes
+
+Restrict agent capabilities in sensitive areas:
+
+```bash
+# Disable code execution for agents in production scope
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "permissionId": "perm_execute_code",
+    "state": "disabled"
+  }'
+
+# Disable data write for agents in customer data scope
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_customer_data",
+    "permissionId": "perm_write_data",
+    "state": "disabled"
+  }'
+```
+
+### Pattern 3: Role-Permission Overrides for Agents
+
+Fine-tune what specific roles can do at specific scopes:
+
+```bash
+# Code Writer role cannot write code in the compliance scope
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_compliance",
+    "roleId": "role_code_writer",
+    "permissionId": "perm_write_code",
+    "state": "disabled"
+  }'
+```
+
+### Pattern 4: Multiple Agents with Different Access
+
+```bash
+# Coding assistant - code access
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "agent", "externalId": "coding-assistant"}'
+
+# Documentation agent - docs access only
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "agent", "externalId": "docs-assistant"}'
+
+# Security scanner - read-only infrastructure
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{"type": "agent", "externalId": "security-scanner"}'
+
+# Each gets appropriate role assignments...
+```
+
+## MCP Server Integration
+
+When using [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, Bedrock can govern which tools and resources agents can access:
+
+```bash
+# Create MCP-specific permissions
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "mcp:filesystem:read", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "mcp:filesystem:write", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "mcp:database:query", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "mcp:github:read", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "mcp:github:write", "scopeId": "scope_engineering"}'
+```
+
+Your MCP server can then check Bedrock permissions before executing tools.
+
+## Checking Agent Permissions
+
+Use the `BedrockEngine` to evaluate permissions at runtime:
+
+```typescript
+import { BedrockEngine } from '@bedrock/core';
+
+const engine = new BedrockEngine(store);
+
+// Check if an agent can perform an action
+const decision = await engine.evaluate({
+  actor: { subjectId: 'agent_coding_assistant' },
+  scopeId: 'scope_engineering',
+  action: 'write',
+  resourceType: 'code',
+  resourcePattern: '*',
+});
+
+if (decision.allowed) {
+  // Agent has permission
+  console.log(decision.explanation);
+  // "Permission write:code granted via roles: role_code_writer"
+} else {
+  // Agent denied
+  console.log(decision.explanation);
+  // "No permission for write:code for subject agent_coding_assistant in scope scope_engineering"
+}
+```
+
+### Delegated Permissions (Agent Acting on Behalf of User)
+
+When an agent acts on behalf of a user, both must have permission:
+
+```typescript
+const decision = await engine.evaluate({
+  actor: { subjectId: 'agent_coding_assistant' },
+  onBehalfOf: { subjectId: 'user_jane' },
+  scopeId: 'scope_engineering',
+  action: 'write',
+  resourceType: 'code',
+});
+
+// Both actor (agent) AND principal (user) must be allowed
+console.log(decision.usedDelegation); // true
+console.log(decision.allowed); // true only if both have permission
+```
+
+### List All Effective Permissions
+
+```typescript
+const permissions = await engine.listEffectivePermissions(
+  'agent_coding_assistant',
+  'scope_engineering'
+);
+
+// Returns array of EffectivePermissionSummary
+// [{ resourceType: 'code', action: 'read', permissions: [...], sourceRoles: [...] }]
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Start with minimal permissions">
+    Give agents the least privilege needed. It's easier to grant more access than to revoke it after a problem.
+  </Accordion>
+  <Accordion title="Use descriptive metadata">
+    Include model version, capabilities, and purpose in agent metadata for easier auditing.
+  </Accordion>
+  <Accordion title="Separate agents by function">
+    Create different agent subjects for different purposes rather than one super-agent.
+  </Accordion>
+  <Accordion title="Restrict production access">
+    Use scope overrides to limit agent capabilities in production environments.
+  </Accordion>
+  <Accordion title="Audit agent actions">
+    Log all permission checks and actions for compliance and debugging.
+  </Accordion>
+  <Accordion title="Version your agents">
+    Use external IDs like `coding-assistant-v1` to track agent versions.
+  </Accordion>
+</AccordionGroup>
+
+## Comparison: User vs Agent Governance
+
+| Aspect | Users | Agents |
+|--------|-------|--------|
+| Subject type | `user` | `agent`, `service`, `api_key` |
+| Authentication | OAuth, SSO, passwords | API keys, tokens |
+| Typical roles | Admin, Editor, Viewer | Reader, Writer, Autonomous |
+| Permission scope | Often broad | Usually narrow and specific |
+| Override usage | Occasional | Frequent (restrict in sensitive areas) |
+| Metadata | Name, email | Model, version, capabilities |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Multi-tenant Authorization" icon="building" href="/guides/multi-tenant">
+    Isolate agent access across tenants
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+    Fine-tune agent permissions at specific scopes
+  </Card>
+</CardGroup>

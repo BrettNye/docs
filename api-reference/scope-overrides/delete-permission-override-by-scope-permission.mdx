@@ -1,0 +1,42 @@
+---
+title: 'Delete Permission Override by Scope and Permission'
+api: 'DELETE /scope-overrides/permissions/{childScopeId}/{permissionId}'
+description: 'Delete a permission override by specifying the scope and permission'
+---
+
+## Path Parameters
+
+<ParamField path="childScopeId" type="string" required>
+  The child scope ID
+</ParamField>
+
+<ParamField path="permissionId" type="string" required>
+  The permission ID
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/scope-overrides/permissions/scope_team/perm_delete' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/scope-overrides/permissions/scope_team/perm_delete', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

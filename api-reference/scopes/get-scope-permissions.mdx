@@ -1,0 +1,61 @@
+---
+title: 'Get Scope Permissions'
+api: 'GET /scopes/{id}/permissions'
+description: 'Retrieve all permissions defined within a scope'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The scope ID
+</ParamField>
+
+## Response
+
+Returns an array of permission objects belonging to the scope.
+
+<ResponseField name="permissions" type="array">
+  <Expandable title="Permission object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the permission
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name of the permission
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Description of the permission
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scopes/scope_123/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scopes/scope_123/permissions', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "perm_read",
+    "name": "read:documents",
+    "description": "Can read documents"
+  },
+  {
+    "id": "perm_write",
+    "name": "write:documents",
+    "description": "Can write documents"
+  }
+]
+```
+</ResponseExample>

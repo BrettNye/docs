@@ -1,0 +1,106 @@
+---
+title: 'Create Scopes (Batch)'
+api: 'POST /scopes/batch'
+description: 'Create multiple scopes in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple scopes in a single API call. You can provide client IDs for in-batch references when setting up scope hierarchies.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `scope_{uuidv7}`. You can optionally provide your own IDs for in-batch references.
+</Info>
+
+## Request Body
+
+Array of scope objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Useful for referencing within the same batch.
+</ParamField>
+
+<ParamField body="[].typeId" type="string" required>
+  ID of the scope type
+</ParamField>
+
+<ParamField body="[].name" type="string">
+  Display name for the scope
+</ParamField>
+
+<ParamField body="[].externalId" type="string">
+  External identifier for the scope
+</ParamField>
+
+<ParamField body="[].meta" type="object">
+  Optional metadata to associate with the scope
+</ParamField>
+
+## Response
+
+Returns an array of created scope objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "scope_acme",
+      "typeId": "scope_type_org",
+      "name": "Acme Corp",
+      "externalId": "acme-corp"
+    },
+    {
+      "id": "scope_engineering",
+      "typeId": "scope_type_team",
+      "name": "Engineering",
+      "externalId": "engineering"
+    },
+    {
+      "id": "scope_backend",
+      "typeId": "scope_type_project",
+      "name": "Backend API",
+      "externalId": "backend-api"
+    }
+  ]'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scopes/batch', [
+  { id: 'scope_acme', typeId: 'scope_type_org', name: 'Acme Corp', externalId: 'acme-corp' },
+  { id: 'scope_engineering', typeId: 'scope_type_team', name: 'Engineering', externalId: 'engineering' },
+  { id: 'scope_backend', typeId: 'scope_type_project', name: 'Backend API', externalId: 'backend-api' },
+], {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "scope_acme",
+    "typeId": "scope_type_org",
+    "name": "Acme Corp",
+    "externalId": "acme-corp"
+  },
+  {
+    "id": "scope_engineering",
+    "typeId": "scope_type_team",
+    "name": "Engineering",
+    "externalId": "engineering"
+  },
+  {
+    "id": "scope_backend",
+    "typeId": "scope_type_project",
+    "name": "Backend API",
+    "externalId": "backend-api"
+  }
+]
+```
+</ResponseExample>

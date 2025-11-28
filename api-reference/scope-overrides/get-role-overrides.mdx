@@ -1,0 +1,60 @@
+---
+title: 'Get Role Overrides'
+api: 'GET /scope-overrides/roles/{childScopeId}'
+description: 'Get role overrides for a specific scope'
+---
+
+## Path Parameters
+
+<ParamField path="childScopeId" type="string" required>
+  The child scope ID to get role overrides for
+</ParamField>
+
+## Response
+
+Returns an array of role override objects.
+
+<ResponseField name="overrides" type="array">
+  <Expandable title="Role Override object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the override
+    </ResponseField>
+    <ResponseField name="childScopeId" type="string">
+      The scope where the override applies
+    </ResponseField>
+    <ResponseField name="roleId" type="string">
+      The role being overridden
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      Override state: `enabled` or `disabled`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scope-overrides/roles/scope_team' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scope-overrides/roles/scope_team', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "override_123",
+    "childScopeId": "scope_team",
+    "roleId": "role_admin",
+    "state": "disabled"
+  }
+]
+```
+</ResponseExample>

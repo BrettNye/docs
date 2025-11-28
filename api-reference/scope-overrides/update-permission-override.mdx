@@ -1,0 +1,53 @@
+---
+title: 'Update Permission Override'
+api: 'PUT /scope-overrides/permissions/{id}'
+description: 'Update a permission override state'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The override ID to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="state" type="string" required>
+  New override state: `enabled` or `disabled`
+</ParamField>
+
+## Response
+
+Returns the updated permission override object.
+
+<RequestExample>
+```bash cURL
+curl -X PUT 'https://api.example.com/scope-overrides/permissions/override_456' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "state": "enabled"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.put('https://api.example.com/scope-overrides/permissions/override_456', {
+  state: 'enabled',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "override_456",
+  "childScopeId": "scope_team",
+  "permissionId": "perm_delete",
+  "state": "enabled"
+}
+```
+</ResponseExample>

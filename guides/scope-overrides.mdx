@@ -1,0 +1,292 @@
+---
+title: 'Scope Overrides'
+description: 'Fine-tuning inherited permissions at specific scopes'
+icon: 'sliders'
+---
+
+## Overview
+
+Scope overrides allow you to modify inherited permissions at specific points in your scope hierarchy. This enables fine-grained control without restructuring your entire role and permission model.
+
+## Types of Overrides
+
+Bedrock supports three types of overrides:
+
+| Override Type | What it Controls | Use Case |
+|---------------|------------------|----------|
+| **Role Override** | Enable/disable an entire role at a scope | Disable "Admin" role in production |
+| **Permission Override** | Enable/disable a specific permission at a scope | Disable "delete" permission in compliance areas |
+| **Role-Permission Override** | Enable/disable a specific permission for a specific role at a scope | Disable "write" for "Editor" role in archived projects |
+
+## How Overrides Work
+
+Overrides are applied during permission resolution:
+
+```
+1. Get user's role assignments
+2. Get permissions for those roles
+3. Apply scope overrides (most specific scope wins)
+4. Return effective permissions
+```
+
+<Note>
+  Overrides only affect inherited permissions. They don't grant new permissions—they can only enable or disable existing ones.
+</Note>
+
+## Role Overrides
+
+Disable or enable an entire role at a specific scope.
+
+### Example: Disable Admin Role in Production
+
+```bash
+# Admin role is defined at org level
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Admin",
+    "description": "Full administrative access",
+    "scopeId": "scope_org"
+  }'
+
+# Disable Admin role in production scope
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_admin",
+    "state": "disabled"
+  }'
+```
+
+Now users with the Admin role won't have admin access in the production scope.
+
+### Updating Role Overrides
+
+```bash
+# Re-enable the role
+curl -X PUT 'https://api.example.com/scope-overrides/roles/override_123' \
+  -d '{"state": "enabled"}'
+```
+
+## Permission Overrides
+
+Disable or enable a specific permission at a scope.
+
+### Example: Disable Delete Permission in Compliance Scope
+
+```bash
+# Delete permission exists at org level
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{"name": "delete:records", "scopeId": "scope_org"}'
+
+# Disable delete in compliance scope
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_compliance",
+    "permissionId": "perm_delete_records",
+    "state": "disabled"
+  }'
+```
+
+### Example: Disable Code Execution for All Agents
+
+```bash
+# Disable execute permission in production
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "permissionId": "perm_execute_code",
+    "state": "disabled"
+  }'
+```
+
+## Role-Permission Overrides
+
+The most granular override: disable a specific permission for a specific role at a specific scope.
+
+### Example: Editors Can't Delete in Archived Projects
+
+```bash
+# Editor role has delete permission at org level
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_editor", "permissionId": "perm_delete"}'
+
+# But not in archived projects
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_archived_projects",
+    "roleId": "role_editor",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+### Example: Agents Can Read But Not Write in Sensitive Areas
+
+```bash
+# Agent role has both read and write
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_agent_writer", "permissionId": "perm_read"}'
+
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{"roleId": "role_agent_writer", "permissionId": "perm_write"}'
+
+# Disable write for this role in customer data scope
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_customer_data",
+    "roleId": "role_agent_writer",
+    "permissionId": "perm_write",
+    "state": "disabled"
+  }'
+```
+
+## Override Precedence
+
+When multiple overrides could apply, the most specific one wins:
+
+```
+Organization (no overrides)
+    ↓
+Department (permission override: disable delete)
+    ↓
+Team (role-permission override: enable delete for Admin)
+    ↓
+Project (no overrides - inherits from Team)
+```
+
+In this example:
+- Most users can't delete in the Department or below
+- But Admins CAN delete in the Team and Project (role-permission override)
+
+## Viewing Overrides
+
+### Get All Overrides for a Scope
+
+```bash
+# Role overrides
+curl -X GET 'https://api.example.com/scope-overrides/roles/scope_production'
+
+# Permission overrides
+curl -X GET 'https://api.example.com/scope-overrides/permissions/scope_production'
+
+# Role-permission overrides
+curl -X GET 'https://api.example.com/scope-overrides/role-permissions/scope_production'
+```
+
+## Deleting Overrides
+
+```bash
+# Delete by ID
+curl -X DELETE 'https://api.example.com/scope-overrides/roles/override_123'
+
+# Delete by scope and role
+curl -X DELETE 'https://api.example.com/scope-overrides/roles/scope_production/role_admin'
+
+# Delete role-permission override by all IDs
+curl -X DELETE 'https://api.example.com/scope-overrides/role-permissions/scope_production/role_editor/perm_delete'
+```
+
+## Common Patterns
+
+### Pattern 1: Production Lockdown
+
+Restrict dangerous operations in production:
+
+```bash
+# Disable destructive permissions
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{"childScopeId": "scope_prod", "permissionId": "perm_delete", "state": "disabled"}'
+
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{"childScopeId": "scope_prod", "permissionId": "perm_execute", "state": "disabled"}'
+
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{"childScopeId": "scope_prod", "permissionId": "perm_modify_infra", "state": "disabled"}'
+```
+
+### Pattern 2: Agent Sandboxing
+
+Restrict agent capabilities in sensitive areas:
+
+```bash
+# Agents can't write to customer data
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_customer_data",
+    "roleId": "role_agent",
+    "permissionId": "perm_write",
+    "state": "disabled"
+  }'
+
+# Agents can't access PII
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_pii",
+    "roleId": "role_agent",
+    "permissionId": "perm_read",
+    "state": "disabled"
+  }'
+```
+
+### Pattern 3: Temporary Restrictions
+
+Apply temporary restrictions during incidents:
+
+```bash
+# During incident: disable all writes
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_affected_service",
+    "permissionId": "perm_write",
+    "state": "disabled"
+  }'
+
+# After incident: remove override
+curl -X DELETE 'https://api.example.com/scope-overrides/permissions/scope_affected_service/perm_write'
+```
+
+### Pattern 4: Compliance Zones
+
+Create compliance zones with restricted access:
+
+```bash
+# SOC2 compliance zone
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{"childScopeId": "scope_soc2", "permissionId": "perm_export_data", "state": "disabled"}'
+
+# HIPAA compliance zone
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{"childScopeId": "scope_hipaa", "permissionId": "perm_share_external", "state": "disabled"}'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use overrides sparingly">
+    Too many overrides make the system hard to understand. Prefer restructuring roles when possible.
+  </Accordion>
+  <Accordion title="Document your overrides">
+    Keep a record of why each override exists and when it should be reviewed.
+  </Accordion>
+  <Accordion title="Prefer permission overrides over role overrides">
+    Permission overrides are more granular and less likely to have unintended effects.
+  </Accordion>
+  <Accordion title="Test override effects">
+    Before applying overrides in production, test in a staging environment.
+  </Accordion>
+  <Accordion title="Audit override changes">
+    Log all override creations, updates, and deletions for compliance.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Governance" icon="user-shield" href="/guides/user-governance">
+    Apply overrides to user permissions
+  </Card>
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Apply overrides to agent permissions
+  </Card>
+</CardGroup>

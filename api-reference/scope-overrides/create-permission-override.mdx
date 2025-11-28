@@ -1,0 +1,59 @@
+---
+title: 'Create Permission Override'
+api: 'POST /scope-overrides/permissions'
+description: 'Create a permission override for a scope'
+---
+
+## Request Body
+
+<ParamField body="childScopeId" type="string" required>
+  The scope where the override will apply
+</ParamField>
+
+<ParamField body="permissionId" type="string" required>
+  The permission to override
+</ParamField>
+
+<ParamField body="state" type="string" required>
+  Override state: `enabled` or `disabled`
+</ParamField>
+
+## Response
+
+Returns the created permission override object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "childScopeId": "scope_team",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scope-overrides/permissions', {
+  childScopeId: 'scope_team',
+  permissionId: 'perm_delete',
+  state: 'disabled',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "override_456",
+  "childScopeId": "scope_team",
+  "permissionId": "perm_delete",
+  "state": "disabled"
+}
+```
+</ResponseExample>

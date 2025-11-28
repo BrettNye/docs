@@ -1,0 +1,73 @@
+---
+title: 'Create Role Permissions (Batch)'
+api: 'POST /role-permissions/batch'
+description: 'Assign multiple permissions to roles in a single request'
+---
+
+## Overview
+
+Batch creation allows you to assign multiple permissions to roles in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `role_perm_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of role-permission assignment objects:
+
+<ParamField body="[].roleId" type="string" required>
+  ID of the role
+</ParamField>
+
+<ParamField body="[].permissionId" type="string" required>
+  ID of the permission to assign
+</ParamField>
+
+## Response
+
+Returns an array of created role-permission assignment objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"roleId": "role_viewer", "permissionId": "permission_read"},
+    {"roleId": "role_editor", "permissionId": "permission_read"},
+    {"roleId": "role_editor", "permissionId": "permission_write"},
+    {"roleId": "role_admin", "permissionId": "permission_read"},
+    {"roleId": "role_admin", "permissionId": "permission_write"},
+    {"roleId": "role_admin", "permissionId": "permission_delete"}
+  ]'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/role-permissions/batch', [
+  { roleId: 'role_viewer', permissionId: 'permission_read' },
+  { roleId: 'role_editor', permissionId: 'permission_read' },
+  { roleId: 'role_editor', permissionId: 'permission_write' },
+  { roleId: 'role_admin', permissionId: 'permission_read' },
+  { roleId: 'role_admin', permissionId: 'permission_write' },
+  { roleId: 'role_admin', permissionId: 'permission_delete' },
+], {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {"id": "role_perm_abc123", "roleId": "role_viewer", "permissionId": "permission_read"},
+  {"id": "role_perm_def456", "roleId": "role_editor", "permissionId": "permission_read"},
+  {"id": "role_perm_ghi789", "roleId": "role_editor", "permissionId": "permission_write"},
+  {"id": "role_perm_jkl012", "roleId": "role_admin", "permissionId": "permission_read"},
+  {"id": "role_perm_mno345", "roleId": "role_admin", "permissionId": "permission_write"},
+  {"id": "role_perm_pqr678", "roleId": "role_admin", "permissionId": "permission_delete"}
+]
+```
+</ResponseExample>

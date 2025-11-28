@@ -1,0 +1,63 @@
+---
+title: 'Create Role Override'
+api: 'POST /scope-overrides/roles'
+description: 'Create a role override for a scope'
+---
+
+## Request Body
+
+<ParamField body="childScopeId" type="string" required>
+  The scope where the override will apply
+</ParamField>
+
+<ParamField body="roleId" type="string" required>
+  The role to override
+</ParamField>
+
+<ParamField body="state" type="string" required>
+  Override state: `enabled` or `disabled`
+</ParamField>
+
+## Response
+
+Returns the created role override object.
+
+<Note>
+  Role overrides allow you to enable or disable inherited roles at specific scopes in the hierarchy.
+</Note>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "childScopeId": "scope_team",
+    "roleId": "role_admin",
+    "state": "disabled"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scope-overrides/roles', {
+  childScopeId: 'scope_team',
+  roleId: 'role_admin',
+  state: 'disabled',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "override_123",
+  "childScopeId": "scope_team",
+  "roleId": "role_admin",
+  "state": "disabled"
+}
+```
+</ResponseExample>

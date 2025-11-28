@@ -1,0 +1,59 @@
+---
+title: 'Create Scope'
+api: 'POST /scopes'
+description: 'Create a new scope'
+---
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name for the scope
+</ParamField>
+
+<ParamField body="typeId" type="string" required>
+  The scope type ID
+</ParamField>
+
+<ParamField body="externalId" type="string">
+  External identifier for the scope
+</ParamField>
+
+## Response
+
+Returns the created scope object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scopes' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Engineering Team",
+    "typeId": "type_team",
+    "externalId": "team-eng"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scopes', {
+  name: 'Engineering Team',
+  typeId: 'type_team',
+  externalId: 'team-eng',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "scope_456",
+  "name": "Engineering Team",
+  "typeId": "type_team",
+  "externalId": "team-eng"
+}
+```
+</ResponseExample>

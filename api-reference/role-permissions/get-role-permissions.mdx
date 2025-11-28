@@ -1,0 +1,67 @@
+---
+title: 'Get Role Permissions'
+api: 'GET /role-permissions'
+description: 'Get permissions assigned to one or more roles'
+---
+
+## Query Parameters
+
+<ParamField query="roleIds" type="string" required>
+  Comma-separated list of role IDs to get permissions for
+</ParamField>
+
+## Response
+
+Returns an array of role-permission mapping objects.
+
+<ResponseField name="rolePermissions" type="array">
+  <Expandable title="Role Permission object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the role-permission mapping
+    </ResponseField>
+    <ResponseField name="roleId" type="string">
+      The role ID
+    </ResponseField>
+    <ResponseField name="permissionId" type="string">
+      The permission ID assigned to the role
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/role-permissions?roleIds=role_1,role_2' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/role-permissions', {
+  params: { roleIds: 'role_1,role_2' },
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "rp_123",
+    "roleId": "role_1",
+    "permissionId": "perm_read"
+  },
+  {
+    "id": "rp_124",
+    "roleId": "role_1",
+    "permissionId": "perm_write"
+  },
+  {
+    "id": "rp_125",
+    "roleId": "role_2",
+    "permissionId": "perm_read"
+  }
+]
+```
+</ResponseExample>

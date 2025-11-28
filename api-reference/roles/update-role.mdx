@@ -1,0 +1,59 @@
+---
+title: 'Update Role'
+api: 'PATCH /roles/{id}'
+description: 'Update an existing role'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the role to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Updated display name for the role
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description of the role
+</ParamField>
+
+## Response
+
+Returns the updated role object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/roles/role_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Senior Editor",
+    "description": "Can edit, publish, and manage content"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.patch('https://api.example.com/roles/role_123', {
+  name: 'Senior Editor',
+  description: 'Can edit, publish, and manage content',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "role_123",
+  "name": "Senior Editor",
+  "description": "Can edit, publish, and manage content",
+  "scopeId": "scope_456"
+}
+```
+</ResponseExample>

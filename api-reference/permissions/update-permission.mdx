@@ -1,0 +1,57 @@
+---
+title: 'Update Permission'
+api: 'PATCH /permissions/{id}'
+description: 'Update an existing permission'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the permission to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Updated display name for the permission
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description of the permission
+</ParamField>
+
+## Response
+
+Returns the updated permission object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/permissions/perm_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "description": "Can read and preview documents"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.patch('https://api.example.com/permissions/perm_123', {
+  description: 'Can read and preview documents',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "perm_123",
+  "name": "read:documents",
+  "description": "Can read and preview documents",
+  "scopeId": "scope_456"
+}
+```
+</ResponseExample>

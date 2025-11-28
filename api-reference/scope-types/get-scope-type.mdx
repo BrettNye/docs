@@ -1,0 +1,50 @@
+---
+title: 'Get Scope Type'
+api: 'GET /scope-types/{id}'
+description: 'Retrieve a scope type by its unique identifier'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scope type
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the scope type
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the scope type
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Description of the scope type
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scope-types/type_org' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scope-types/type_org', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "type_org",
+  "name": "Organization",
+  "description": "Top-level organization scope"
+}
+```
+</ResponseExample>

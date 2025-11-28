@@ -1,80 +1,232 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Set up Bedrock authorization in under 10 minutes'
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This guide walks you through setting up a basic authorization structure with Bedrock. By the end, you'll have:
 
-### Step 1: Set up your local environment
+- Scope types defining your organizational hierarchy
+- Scopes representing your organization and teams
+- Roles and permissions for access control
+- Both a user and an AI agent with appropriate access
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Step 1: Define Your Scope Types
 
-### Step 2: Deploy your changes
+Scope types define the kinds of organizational units in your hierarchy. Common examples include organizations, teams, and projects.
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+```bash
+# Create Organization scope type
+curl -X POST 'https://api.example.com/scope-types' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Organization",
+    "description": "Top-level organization"
+  }'
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+# Create Team scope type
+curl -X POST 'https://api.example.com/scope-types' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Team",
+    "description": "Team within an organization"
+  }'
+```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Then define the hierarchy relationship:
 
-### Step 3: Go live
+```bash
+# Teams can be children of Organizations
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "parentTypeId": "type_org",
+    "childTypeId": "type_team"
+  }'
+```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+## Step 2: Create Scopes
 
-## Next steps
+Now create actual scopes representing your organization:
 
-Now that you have your docs running, explore these key features:
+```bash
+# Create your organization
+curl -X POST 'https://api.example.com/scopes' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Acme Corp",
+    "typeId": "type_org",
+    "externalId": "acme-corp"
+  }'
+
+# Create a team
+curl -X POST 'https://api.example.com/scopes' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Engineering",
+    "typeId": "type_team",
+    "externalId": "engineering"
+  }'
+
+# Link team to organization
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "parentScopeId": "scope_acme",
+    "childScopeId": "scope_engineering"
+  }'
+```
+
+## Step 3: Create Roles and Permissions
+
+Define what actions are possible and group them into roles:
+
+```bash
+# Create permissions at the org level
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "read:documents", "scopeId": "scope_acme"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "write:documents", "scopeId": "scope_acme"}'
+
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "delete:documents", "scopeId": "scope_acme"}'
+
+# Create roles
+curl -X POST 'https://api.example.com/roles' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Viewer",
+    "description": "Read-only access",
+    "scopeId": "scope_acme"
+  }'
+
+curl -X POST 'https://api.example.com/roles' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Editor",
+    "description": "Can read and write",
+    "scopeId": "scope_acme"
+  }'
+
+# Assign permissions to roles
+curl -X POST 'https://api.example.com/role-permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"roleId": "role_viewer", "permissionId": "perm_read"}'
+
+curl -X POST 'https://api.example.com/role-permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"roleId": "role_editor", "permissionId": "perm_read"}'
+
+curl -X POST 'https://api.example.com/role-permissions' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"roleId": "role_editor", "permissionId": "perm_write"}'
+```
+
+## Step 4: Add a User
+
+Create a user subject, add them to a scope, and assign a role:
+
+```bash
+# Create user subject
+curl -X POST 'https://api.example.com/subjects' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "user",
+    "externalId": "user-jane-doe",
+    "metadata": {"name": "Jane Doe", "email": "jane@acme.com"}
+  }'
+
+# Add user to engineering team
+curl -X POST 'https://api.example.com/memberships' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subjectId": "sub_jane",
+    "scopeId": "scope_engineering"
+  }'
+
+# Assign Editor role
+curl -X POST 'https://api.example.com/role-assignments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "roleId": "role_editor",
+    "membershipId": "mem_jane_eng"
+  }'
+```
+
+## Step 5: Add an AI Agent
+
+Add an AI agent with more restricted permissions:
+
+```bash
+# Create agent subject
+curl -X POST 'https://api.example.com/subjects' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "agent",
+    "externalId": "coding-assistant-v1",
+    "metadata": {"name": "Coding Assistant", "model": "claude-3"}
+  }'
+
+# Add agent to engineering team
+curl -X POST 'https://api.example.com/memberships' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subjectId": "sub_agent",
+    "scopeId": "scope_engineering"
+  }'
+
+# Assign Viewer role (read-only for the agent)
+curl -X POST 'https://api.example.com/role-assignments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "roleId": "role_viewer",
+    "membershipId": "mem_agent_eng"
+  }'
+```
+
+<Check>
+  You now have a user with Editor access and an AI agent with Viewer access to the Engineering team!
+</Check>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+  <Card title="User Governance" icon="user-shield" href="/guides/user-governance">
+    Deep dive into managing user permissions
+  </Card>
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Learn advanced agent permission patterns
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+    Fine-tune inherited permissions
+  </Card>
+  <Card title="API Reference" icon="terminal" href="/api-reference/introduction">
+    Explore the complete API
+  </Card>
 
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

@@ -1,0 +1,42 @@
+---
+title: 'Delete Scope'
+api: 'DELETE /scopes/{id}'
+description: 'Delete a scope from the system'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scope to delete
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<Warning>
+  Deleting a scope will also remove all associated memberships, roles, permissions, and hierarchy relationships.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/scopes/scope_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/scopes/scope_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

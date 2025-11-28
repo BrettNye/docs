@@ -1,0 +1,66 @@
+---
+title: 'Get Roles by Scope'
+api: 'GET /roles/by-scope/{scopeId}'
+description: 'Retrieve all roles defined within a specific scope'
+---
+
+## Path Parameters
+
+<ParamField path="scopeId" type="string" required>
+  The scope ID to get roles for
+</ParamField>
+
+## Response
+
+Returns an array of role objects belonging to the specified scope.
+
+<ResponseField name="roles" type="array">
+  <Expandable title="Role object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the role
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name of the role
+    </ResponseField>
+    <ResponseField name="description" type="string">
+      Description of the role
+    </ResponseField>
+    <ResponseField name="scopeId" type="string">
+      The scope this role belongs to
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/roles/by-scope/scope_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/roles/by-scope/scope_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "role_1",
+    "name": "Admin",
+    "description": "Full administrative access",
+    "scopeId": "scope_123"
+  },
+  {
+    "id": "role_2",
+    "name": "Viewer",
+    "description": "Read-only access",
+    "scopeId": "scope_123"
+  }
+]
+```
+</ResponseExample>

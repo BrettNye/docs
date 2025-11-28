@@ -1,0 +1,62 @@
+---
+title: 'Get Role Assignments'
+api: 'GET /role-assignments'
+description: 'Get role assignments for one or more memberships'
+---
+
+## Query Parameters
+
+<ParamField query="membershipIds" type="string" required>
+  Comma-separated list of membership IDs to get role assignments for
+</ParamField>
+
+## Response
+
+Returns an array of role assignment objects.
+
+<ResponseField name="assignments" type="array">
+  <Expandable title="Role Assignment object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the role assignment
+    </ResponseField>
+    <ResponseField name="roleId" type="string">
+      The assigned role ID
+    </ResponseField>
+    <ResponseField name="membershipId" type="string">
+      The membership ID this role is assigned to
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/role-assignments?membershipIds=mem_1,mem_2' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/role-assignments', {
+  params: { membershipIds: 'mem_1,mem_2' },
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "ra_123",
+    "roleId": "role_456",
+    "membershipId": "mem_1"
+  },
+  {
+    "id": "ra_124",
+    "roleId": "role_789",
+    "membershipId": "mem_2"
+  }
+]
+```
+</ResponseExample>

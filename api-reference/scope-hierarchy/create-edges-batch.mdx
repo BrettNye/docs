@@ -1,0 +1,69 @@
+---
+title: 'Create Hierarchy Edges (Batch)'
+api: 'POST /scope-hierarchy/batch'
+description: 'Create multiple scope hierarchy edges in a single request'
+---
+
+## Overview
+
+Batch creation allows you to establish multiple parent-child scope relationships in a single API call.
+
+## Request Body
+
+Array of hierarchy edge objects:
+
+<ParamField body="[].parentScopeId" type="string" required>
+  ID of the parent scope
+</ParamField>
+
+<ParamField body="[].childScopeId" type="string" required>
+  ID of the child scope
+</ParamField>
+
+## Response
+
+Returns an array of created hierarchy edge objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "parentScopeId": "scope_acme",
+      "childScopeId": "scope_engineering"
+    },
+    {
+      "parentScopeId": "scope_engineering",
+      "childScopeId": "scope_backend"
+    }
+  ]'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scope-hierarchy/batch', [
+  { parentScopeId: 'scope_acme', childScopeId: 'scope_engineering' },
+  { parentScopeId: 'scope_engineering', childScopeId: 'scope_backend' },
+], {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "parentScopeId": "scope_acme",
+    "childScopeId": "scope_engineering"
+  },
+  {
+    "parentScopeId": "scope_engineering",
+    "childScopeId": "scope_backend"
+  }
+]
+```
+</ResponseExample>

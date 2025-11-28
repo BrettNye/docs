@@ -1,0 +1,42 @@
+---
+title: 'Delete Role Assignment by Role and Membership'
+api: 'DELETE /role-assignments/{roleId}/{membershipId}'
+description: 'Delete a role assignment by specifying the role and membership'
+---
+
+## Path Parameters
+
+<ParamField path="roleId" type="string" required>
+  The role ID
+</ParamField>
+
+<ParamField path="membershipId" type="string" required>
+  The membership ID
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/role-assignments/role_456/mem_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.delete('https://api.example.com/role-assignments/role_456/mem_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "success": true
+}
+```
+</ResponseExample>

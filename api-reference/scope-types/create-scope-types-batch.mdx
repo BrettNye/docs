@@ -1,0 +1,92 @@
+---
+title: 'Create Scope Types (Batch)'
+api: 'POST /scope-types/batch'
+description: 'Create multiple scope types in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple scope types in a single API call. You can provide client IDs for in-batch references when setting up scope type hierarchies.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `scope_type_{uuidv7}`. You can optionally provide your own IDs for in-batch references.
+</Info>
+
+## Request Body
+
+Array of scope type objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Useful for referencing within the same batch.
+</ParamField>
+
+<ParamField body="[].name" type="string" required>
+  Display name for the scope type
+</ParamField>
+
+<ParamField body="[].config" type="object">
+  Configuration for the scope type including permission mode
+</ParamField>
+
+## Response
+
+Returns an array of created scope type objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "scope_type_org",
+      "name": "Organization",
+      "config": {"permissionMode": "define"}
+    },
+    {
+      "id": "scope_type_team",
+      "name": "Team",
+      "config": {"permissionMode": "inherit"}
+    },
+    {
+      "id": "scope_type_project",
+      "name": "Project",
+      "config": {"permissionMode": "inherit"}
+    }
+  ]'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.post('https://api.example.com/scope-types/batch', [
+  { id: 'scope_type_org', name: 'Organization', config: { permissionMode: 'define' } },
+  { id: 'scope_type_team', name: 'Team', config: { permissionMode: 'inherit' } },
+  { id: 'scope_type_project', name: 'Project', config: { permissionMode: 'inherit' } },
+], {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "scope_type_org",
+    "name": "Organization",
+    "config": {"permissionMode": "define"}
+  },
+  {
+    "id": "scope_type_team",
+    "name": "Team",
+    "config": {"permissionMode": "inherit"}
+  },
+  {
+    "id": "scope_type_project",
+    "name": "Project",
+    "config": {"permissionMode": "inherit"}
+  }
+]
+```
+</ResponseExample>

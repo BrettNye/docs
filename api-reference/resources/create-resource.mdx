@@ -1,0 +1,59 @@
+---
+title: 'Create Resource'
+api: 'POST /resources'
+description: 'Create a new resource'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `resource_{uuidv7}`
+</ParamField>
+
+<ParamField body="resourceTypeId" type="string" required>
+  ID of the resource type
+</ParamField>
+
+<ParamField body="scopeId" type="string" required>
+  ID of the owning scope
+</ParamField>
+
+<ParamField body="externalResourceId" type="string" required>
+  External identifier for the resource
+</ParamField>
+
+<ParamField body="displayName" type="string">
+  Display name for the resource
+</ParamField>
+
+## Response
+
+Returns the created resource object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/resources' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "resourceTypeId": "resource_type_document",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "doc-123",
+    "displayName": "Project Roadmap"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "resource_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "resourceTypeId": "resource_type_document",
+  "scopeId": "scope_engineering",
+  "externalResourceId": "doc-123",
+  "displayName": "Project Roadmap",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "createdBy": "system"
+}
+```
+</ResponseExample>

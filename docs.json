@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "theme": "aspen",
+  "name": "Bedrock",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#FDCA40",
+    "light": "#FDCA40",
+    "dark": "#FDCA40"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -14,35 +14,19 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Use Cases",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/user-governance",
+              "guides/agent-governance",
+              "guides/multi-tenant",
+              "guides/scope-overrides"
             ]
           }
         ]
@@ -51,18 +35,127 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Subjects",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/subjects/get-subject",
+              "api-reference/subjects/get-subjects-by-external",
+              "api-reference/subjects/create-subject",
+              "api-reference/subjects/update-subject",
+              "api-reference/subjects/delete-subject"
+            ]
+          },
+          {
+            "group": "Memberships",
+            "pages": [
+              "api-reference/memberships/get-memberships",
+              "api-reference/memberships/create-membership",
+              "api-reference/memberships/delete-membership"
+            ]
+          },
+          {
+            "group": "Roles",
+            "pages": [
+              "api-reference/roles/get-roles",
+              "api-reference/roles/get-role",
+              "api-reference/roles/get-roles-by-scope",
+              "api-reference/roles/create-role",
+              "api-reference/roles/update-role",
+              "api-reference/roles/delete-role"
+            ]
+          },
+          {
+            "group": "Role Assignments",
+            "pages": [
+              "api-reference/role-assignments/get-role-assignments",
+              "api-reference/role-assignments/create-role-assignment",
+              "api-reference/role-assignments/delete-role-assignment",
+              "api-reference/role-assignments/delete-role-assignment-by-role-membership"
+            ]
+          },
+          {
+            "group": "Permissions",
+            "pages": [
+              "api-reference/permissions/get-permissions",
+              "api-reference/permissions/get-permission",
+              "api-reference/permissions/get-permissions-by-scope",
+              "api-reference/permissions/create-permission",
+              "api-reference/permissions/update-permission",
+              "api-reference/permissions/delete-permission"
+            ]
+          },
+          {
+            "group": "Role Permissions",
+            "pages": [
+              "api-reference/role-permissions/get-role-permissions",
+              "api-reference/role-permissions/create-role-permission",
+              "api-reference/role-permissions/delete-role-permission",
+              "api-reference/role-permissions/delete-role-permission-by-role-permission"
+            ]
+          },
+          {
+            "group": "Scopes",
+            "pages": [
+              "api-reference/scopes/get-scopes",
+              "api-reference/scopes/get-scope",
+              "api-reference/scopes/get-scope-children",
+              "api-reference/scopes/get-scope-parents",
+              "api-reference/scopes/get-scope-roles",
+              "api-reference/scopes/get-scope-permissions",
+              "api-reference/scopes/create-scope",
+              "api-reference/scopes/update-scope",
+              "api-reference/scopes/delete-scope"
+            ]
+          },
+          {
+            "group": "Scope Types",
+            "pages": [
+              "api-reference/scope-types/get-scope-types",
+              "api-reference/scope-types/get-scope-type",
+              "api-reference/scope-types/create-scope-type",
+              "api-reference/scope-types/update-scope-type",
+              "api-reference/scope-types/delete-scope-type"
+            ]
+          },
+          {
+            "group": "Scope Hierarchy",
+            "pages": [
+              "api-reference/scope-hierarchy/get-parent-scopes",
+              "api-reference/scope-hierarchy/get-child-scopes",
+              "api-reference/scope-hierarchy/create-edge",
+              "api-reference/scope-hierarchy/delete-edge"
+            ]
+          },
+          {
+            "group": "Scope Type Hierarchy",
+            "pages": [
+              "api-reference/scope-type-hierarchy/create-edge",
+              "api-reference/scope-type-hierarchy/delete-edge"
+            ]
+          },
+          {
+            "group": "Scope Overrides",
+            "pages": [
+              "api-reference/scope-overrides/get-role-overrides",
+              "api-reference/scope-overrides/create-role-override",
+              "api-reference/scope-overrides/update-role-override",
+              "api-reference/scope-overrides/delete-role-override",
+              "api-reference/scope-overrides/delete-role-override-by-scope-role",
+              "api-reference/scope-overrides/get-permission-overrides",
+              "api-reference/scope-overrides/create-permission-override",
+              "api-reference/scope-overrides/update-permission-override",
+              "api-reference/scope-overrides/delete-permission-override",
+              "api-reference/scope-overrides/delete-permission-override-by-scope-permission",
+              "api-reference/scope-overrides/get-role-permission-overrides",
+              "api-reference/scope-overrides/create-role-permission-override",
+              "api-reference/scope-overrides/update-role-permission-override",
+              "api-reference/scope-overrides/delete-role-permission-override",
+              "api-reference/scope-overrides/delete-role-permission-override-by-ids"
             ]
           }
         ]
@@ -81,6 +174,17 @@
           "icon": "newspaper"
         }
       ]
+    }
+  },
+  "api": {
+    "mdx": {
+      "server": "http://localhost:3000",
+      "auth": {
+        "method": "bearer"
+      }
+    },
+    "playground": {
+      "display": "interactive"
     }
   },
   "logo": {

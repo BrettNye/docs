@@ -1,0 +1,56 @@
+---
+title: 'Update Scope Type'
+api: 'PATCH /scope-types/{id}'
+description: 'Update an existing scope type'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scope type to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Updated display name for the scope type
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description
+</ParamField>
+
+## Response
+
+Returns the updated scope type object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/scope-types/type_dept' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "description": "Business unit or department"
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.patch('https://api.example.com/scope-types/type_dept', {
+  description: 'Business unit or department',
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "type_dept",
+  "name": "Department",
+  "description": "Business unit or department"
+}
+```
+</ResponseExample>

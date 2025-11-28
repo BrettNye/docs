@@ -1,0 +1,61 @@
+---
+title: 'Get Child Scopes'
+api: 'GET /scopes/{id}/children'
+description: 'Retrieve all child scopes of a parent scope'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The parent scope ID
+</ParamField>
+
+## Response
+
+Returns an array of child scope objects.
+
+<ResponseField name="scopes" type="array">
+  <Expandable title="Scope object">
+    <ResponseField name="id" type="string">
+      Unique identifier for the scope
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Display name of the scope
+    </ResponseField>
+    <ResponseField name="typeId" type="string">
+      The scope type ID
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scopes/scope_org/children' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scopes/scope_org/children', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "scope_team_1",
+    "name": "Engineering Team",
+    "typeId": "type_team"
+  },
+  {
+    "id": "scope_team_2",
+    "name": "Marketing Team",
+    "typeId": "type_team"
+  }
+]
+```
+</ResponseExample>

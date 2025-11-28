@@ -1,0 +1,59 @@
+---
+title: 'Update Subject'
+api: 'PATCH /subjects/{id}'
+description: 'Update an existing subject'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the subject to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="metadata" type="object">
+  Updated metadata for the subject
+</ParamField>
+
+## Response
+
+Returns the updated subject object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/subjects/sub_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "metadata": {
+      "name": "John Doe Updated",
+      "email": "john.updated@example.com"
+    }
+  }'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.patch('https://api.example.com/subjects/sub_123', {
+  metadata: { name: 'John Doe Updated', email: 'john.updated@example.com' },
+}, {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "sub_123",
+  "type": "user",
+  "externalId": "user-456",
+  "metadata": {
+    "name": "John Doe Updated",
+    "email": "john.updated@example.com"
+  }
+}
+```
+</ResponseExample>

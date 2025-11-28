@@ -1,33 +1,63 @@
 ---
 title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+description: 'Bedrock API Reference - Authorization and Access Control Management'
 ---
-
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
 
 ## Welcome
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+The Bedrock API provides a comprehensive authorization and access control system. It enables you to manage subjects (users, API keys, services, agents), scopes (organizational hierarchies), roles, permissions, and fine-grained access control through overrides.
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+## Core Concepts
+
+<CardGroup cols={2}>
+  <Card title="Subjects" icon="user" href="/api-reference/subjects/get-subject">
+    Users, API keys, services, or agents that can be granted access
+  </Card>
+  <Card title="Scopes" icon="sitemap" href="/api-reference/scopes/get-scope">
+    Hierarchical organizational units (orgs, teams, projects)
+  </Card>
+  <Card title="Roles" icon="user-shield" href="/api-reference/roles/get-role">
+    Named collections of permissions assignable to memberships
+  </Card>
+  <Card title="Permissions" icon="key" href="/api-reference/permissions/get-permission">
+    Granular access rights (e.g., read:documents, write:documents)
+  </Card>
+</CardGroup>
+
+## How It Works
+
+1. **Subjects** are added to **Scopes** via **Memberships**
+2. **Roles** are assigned to **Memberships** via **Role Assignments**
+3. **Permissions** are assigned to **Roles** via **Role Permissions**
+4. **Scope Overrides** allow fine-tuning inherited roles/permissions at child scopes
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints require Bearer token authentication.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+```bash
+curl -X GET 'https://api.example.com/subjects/sub_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
 ```
+
+## Base URL
+
+```
+https://api.example.com
+```
+
+## API Groups
+
+| Group | Description |
+|-------|-------------|
+| **Subjects** | Manage users, API keys, services, and agents |
+| **Memberships** | Add/remove subjects from scopes |
+| **Roles** | Define roles within scopes |
+| **Role Assignments** | Assign roles to memberships |
+| **Permissions** | Define permissions within scopes |
+| **Role Permissions** | Map permissions to roles |
+| **Scopes** | Manage organizational hierarchy nodes |
+| **Scope Types** | Define types of scopes (org, team, project) |
+| **Scope Hierarchy** | Manage parent-child scope relationships |
+| **Scope Type Hierarchy** | Define valid type relationships |
+| **Scope Overrides** | Override inherited roles/permissions at child scopes |

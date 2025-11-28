@@ -1,0 +1,55 @@
+---
+title: 'Get Scope'
+api: 'GET /scopes/{id}'
+description: 'Retrieve a scope by its unique identifier'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scope
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the scope
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the scope
+</ResponseField>
+
+<ResponseField name="typeId" type="string">
+  The scope type ID
+</ResponseField>
+
+<ResponseField name="externalId" type="string">
+  External identifier for the scope
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/scopes/scope_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+const { data } = await axios.get('https://api.example.com/scopes/scope_123', {
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
+});
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "scope_123",
+  "name": "Acme Organization",
+  "typeId": "type_org",
+  "externalId": "org-acme"
+}
+```
+</ResponseExample>
