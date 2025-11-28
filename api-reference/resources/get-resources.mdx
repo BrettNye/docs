@@ -1,0 +1,47 @@
+---
+title: 'Get Resources'
+api: 'GET /resources'
+description: 'Get resources for a scope'
+---
+
+## Query Parameters
+
+<ParamField query="scopeId" type="string" required>
+  ID of the scope to get resources for
+</ParamField>
+
+## Response
+
+Returns an array of resource objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resources?scopeId=scope_engineering' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "resource_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "resourceTypeId": "resource_type_document",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "doc-123",
+    "displayName": "Project Roadmap",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "user-1"
+  },
+  {
+    "id": "resource_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "resourceTypeId": "resource_type_document",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "doc-456",
+    "displayName": "API Specification",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "user-1"
+  }
+]
+```
+</ResponseExample>

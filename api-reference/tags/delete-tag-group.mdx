@@ -1,0 +1,28 @@
+---
+title: 'Delete Tag Group'
+api: 'DELETE /tag-groups/{id}'
+description: 'Delete a tag group'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the tag group to delete
+</ParamField>
+
+## Response
+
+Returns no content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/tag-groups/tag_group_priority' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{}
+```
+</ResponseExample>

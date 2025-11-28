@@ -1,0 +1,56 @@
+---
+title: 'Get Tags'
+api: 'GET /tags'
+description: 'Get tags for a tag group'
+---
+
+## Query Parameters
+
+<ParamField query="tagGroupId" type="string" required>
+  ID of the tag group to get tags for
+</ParamField>
+
+## Response
+
+Returns an array of tag objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/tags?tagGroupId=tag_group_priority' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tag_high",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "high",
+    "label": "High Priority",
+    "createdBy": "user-1",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_medium",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "medium",
+    "label": "Medium Priority",
+    "createdBy": "user-1",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_low",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "low",
+    "label": "Low Priority",
+    "createdBy": "user-1",
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

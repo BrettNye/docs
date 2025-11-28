@@ -170,23 +170,45 @@
           {
             "group": "Resource Types",
             "pages": [
+              "api-reference/resource-types/get-resource-types",
+              "api-reference/resource-types/get-resource-type",
               "api-reference/resource-types/create-resource-type",
-              "api-reference/resource-types/create-resource-types-batch"
+              "api-reference/resource-types/create-resource-types-batch",
+              "api-reference/resource-types/update-resource-type",
+              "api-reference/resource-types/delete-resource-type"
             ]
           },
           {
             "group": "Resources",
             "pages": [
+              "api-reference/resources/get-resources",
+              "api-reference/resources/get-resource",
               "api-reference/resources/create-resource",
-              "api-reference/resources/create-resources-batch"
+              "api-reference/resources/create-resources-batch",
+              "api-reference/resources/update-resource",
+              "api-reference/resources/delete-resource"
+            ]
+          },
+          {
+            "group": "Tag Groups",
+            "pages": [
+              "api-reference/tags/get-tag-groups",
+              "api-reference/tags/get-tag-group",
+              "api-reference/tags/create-tag-group",
+              "api-reference/tags/create-tag-groups-batch",
+              "api-reference/tags/update-tag-group",
+              "api-reference/tags/delete-tag-group"
             ]
           },
           {
             "group": "Tags",
             "pages": [
-              "api-reference/tags/create-tag-group",
+              "api-reference/tags/get-tags",
+              "api-reference/tags/get-tag",
               "api-reference/tags/create-tag",
-              "api-reference/tags/create-tags-batch"
+              "api-reference/tags/create-tags-batch",
+              "api-reference/tags/update-tag",
+              "api-reference/tags/delete-tag"
             ]
           }
         ]

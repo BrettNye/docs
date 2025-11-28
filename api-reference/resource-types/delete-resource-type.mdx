@@ -1,0 +1,28 @@
+---
+title: 'Delete Resource Type'
+api: 'DELETE /resource-types/{id}'
+description: 'Delete a resource type'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the resource type to delete
+</ParamField>
+
+## Response
+
+Returns no content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/resource-types/resource_type_document' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{}
+```
+</ResponseExample>

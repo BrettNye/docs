@@ -1,0 +1,46 @@
+---
+title: 'Update Tag'
+api: 'PATCH /tags/{id}'
+description: 'Update a tag'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the tag to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="label" type="string">
+  Display label for the tag
+</ParamField>
+
+## Response
+
+Returns the updated tag object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/tags/tag_high' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "label": "Critical Priority"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_high",
+  "scopeId": "scope_acme",
+  "tagGroupId": "tag_group_priority",
+  "identifier": "high",
+  "label": "Critical Priority",
+  "createdBy": "user-1",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

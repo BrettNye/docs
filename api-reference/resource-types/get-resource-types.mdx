@@ -1,0 +1,45 @@
+---
+title: 'Get Resource Types'
+api: 'GET /resource-types'
+description: 'Get resource types for a scope'
+---
+
+## Query Parameters
+
+<ParamField query="scopeId" type="string" required>
+  ID of the scope to get resource types for
+</ParamField>
+
+## Response
+
+Returns an array of resource type objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-types?scopeId=scope_acme' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "resource_type_document",
+    "name": "Document",
+    "key": "document",
+    "scopeId": "scope_acme",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "system"
+  },
+  {
+    "id": "resource_type_folder",
+    "name": "Folder",
+    "key": "folder",
+    "scopeId": "scope_acme",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "system"
+  }
+]
+```
+</ResponseExample>

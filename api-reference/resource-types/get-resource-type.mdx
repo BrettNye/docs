@@ -1,0 +1,35 @@
+---
+title: 'Get Resource Type'
+api: 'GET /resource-types/{id}'
+description: 'Get a resource type by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the resource type
+</ParamField>
+
+## Response
+
+Returns the resource type object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-types/resource_type_document' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "resource_type_document",
+  "name": "Document",
+  "key": "document",
+  "scopeId": "scope_acme",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "createdBy": "system"
+}
+```
+</ResponseExample>

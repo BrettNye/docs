@@ -1,0 +1,45 @@
+---
+title: 'Update Resource Type'
+api: 'PATCH /resource-types/{id}'
+description: 'Update a resource type'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the resource type to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name for the resource type
+</ParamField>
+
+## Response
+
+Returns the updated resource type object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/resource-types/resource_type_document' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Document File"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "resource_type_document",
+  "name": "Document File",
+  "key": "document",
+  "scopeId": "scope_acme",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "createdBy": "system"
+}
+```
+</ResponseExample>

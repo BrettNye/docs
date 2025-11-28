@@ -1,0 +1,62 @@
+---
+title: 'Update Tag Group'
+api: 'PATCH /tag-groups/{id}'
+description: 'Update a tag group'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the tag group to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name for the tag group
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description of the tag group
+</ParamField>
+
+<ParamField body="maxAppliedPerTarget" type="number">
+  Maximum number of tags from this group that can be applied to a single target
+</ParamField>
+
+<ParamField body="isLocked" type="boolean">
+  Whether the tag group is locked from modifications
+</ParamField>
+
+## Response
+
+Returns the updated tag group object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/tag-groups/tag_group_priority' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Priority Level",
+    "description": "Updated priority levels"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_group_priority",
+  "scopeId": "scope_acme",
+  "name": "Priority Level",
+  "key": "priority",
+  "description": "Updated priority levels",
+  "origin": "user",
+  "maxAppliedPerTarget": 1,
+  "isLocked": false,
+  "createdBy": "user-1",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

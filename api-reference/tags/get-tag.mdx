@@ -1,0 +1,36 @@
+---
+title: 'Get Tag'
+api: 'GET /tags/{id}'
+description: 'Get a tag by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  ID of the tag
+</ParamField>
+
+## Response
+
+Returns the tag object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/tags/tag_high' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_high",
+  "scopeId": "scope_acme",
+  "tagGroupId": "tag_group_priority",
+  "identifier": "high",
+  "label": "High Priority",
+  "createdBy": "user-1",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>
