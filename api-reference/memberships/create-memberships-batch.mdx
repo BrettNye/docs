@@ -1,0 +1,70 @@
+---
+title: 'Create Memberships (Batch)'
+api: 'POST /memberships/batch'
+description: 'Create multiple memberships in a single request'
+---
+
+## Overview
+
+Batch creation allows you to add multiple subjects to scopes in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `membership_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of membership objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Useful for referencing in role assignments.
+</ParamField>
+
+<ParamField body="[].subjectId" type="string" required>
+  ID of the subject to add
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope to add the subject to
+</ParamField>
+
+## Response
+
+Returns an array of created membership objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/memberships/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "membership_jane_eng",
+      "subjectId": "subject_jane",
+      "scopeId": "scope_engineering"
+    },
+    {
+      "id": "membership_agent_eng",
+      "subjectId": "subject_agent",
+      "scopeId": "scope_engineering"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "membership_jane_eng",
+    "subjectId": "subject_jane",
+    "scopeId": "scope_engineering"
+  },
+  {
+    "id": "membership_agent_eng",
+    "subjectId": "subject_agent",
+    "scopeId": "scope_engineering"
+  }
+]
+```
+</ResponseExample>

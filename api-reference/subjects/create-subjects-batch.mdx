@@ -6,7 +6,7 @@ description: 'Create multiple subjects in a single request'
 
 ## Overview
 
-Batch creation allows you to create multiple subjects in a single API call. This is more efficient than making individual requests and supports in-batch ID references.
+Batch creation allows you to create multiple subjects in a single API call. This is more efficient than making individual requests and supports in-batch ID references. Each subject can optionally include inline memberships with role assignments.
 
 <Info>
   **ID Format**: All IDs use a namespaced UUIDv7 format: `subject_{uuidv7}`. You can optionally provide your own IDs for in-batch references.
@@ -36,12 +36,24 @@ Array of subject objects:
   Optional metadata to associate with the subject
 </ParamField>
 
+<ParamField body="[].memberships" type="array">
+  Optional inline memberships with role assignments. Creates memberships and role assignments in a single request.
+</ParamField>
+
+<ParamField body="[].memberships[].scopeId" type="string" required>
+  ID of the scope to add the subject to
+</ParamField>
+
+<ParamField body="[].memberships[].roleIds" type="array">
+  Optional array of role IDs to assign to the membership
+</ParamField>
+
 ## Response
 
-Returns an array of created subject objects.
+Returns an array of created subject objects. If memberships were provided, each subject includes the created memberships with their role assignments.
 
 <RequestExample>
-```bash cURL
+```bash cURL (Basic)
 curl -X POST 'https://api.example.com/subjects/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
@@ -62,22 +74,58 @@ curl -X POST 'https://api.example.com/subjects/batch' \
   ]'
 ```
 
+```bash cURL (With Memberships)
+curl -X POST 'https://api.example.com/subjects/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "subject_jane",
+      "subjectType": "user",
+      "externalId": "user-jane-doe",
+      "displayName": "Jane Doe",
+      "meta": {"email": "jane@acme.com"},
+      "memberships": [
+        {"scopeId": "scope_engineering", "roleIds": ["role_editor"]}
+      ]
+    },
+    {
+      "id": "subject_agent",
+      "subjectType": "agent",
+      "externalId": "coding-assistant-v1",
+      "displayName": "Coding Assistant",
+      "meta": {"model": "claude-3"},
+      "memberships": [
+        {"scopeId": "scope_engineering", "roleIds": ["role_viewer"]}
+      ]
+    }
+  ]'
+```
+
 ```javascript Node.js
 const axios = require('axios');
 
+// Create subjects with memberships and role assignments
 const { data } = await axios.post('https://api.example.com/subjects/batch', [
   {
-    id: 'subject_user_jane',
+    id: 'subject_jane',
     subjectType: 'user',
     externalId: 'user-jane-doe',
     displayName: 'Jane Doe',
     meta: { email: 'jane@acme.com' },
+    memberships: [
+      { scopeId: 'scope_engineering', roleIds: ['role_editor'] }
+    ]
   },
   {
+    id: 'subject_agent',
     subjectType: 'agent',
     externalId: 'coding-assistant-v1',
     displayName: 'Coding Assistant',
     meta: { model: 'claude-3' },
+    memberships: [
+      { scopeId: 'scope_engineering', roleIds: ['role_viewer'] }
+    ]
   },
 ], {
   headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
@@ -86,7 +134,7 @@ const { data } = await axios.post('https://api.example.com/subjects/batch', [
 </RequestExample>
 
 <ResponseExample>
-```json Response
+```json Basic Response
 [
   {
     "id": "subject_user_jane",
@@ -101,6 +149,45 @@ const { data } = await axios.post('https://api.example.com/subjects/batch', [
     "externalId": "coding-assistant-v1",
     "displayName": "Coding Assistant",
     "meta": {"model": "claude-3"}
+  }
+]
+```
+
+```json Response with Memberships
+[
+  {
+    "id": "subject_jane",
+    "subjectType": "user",
+    "externalId": "user-jane-doe",
+    "displayName": "Jane Doe",
+    "meta": {"email": "jane@acme.com"},
+    "memberships": [
+      {
+        "id": "membership_abc123",
+        "subjectId": "subject_jane",
+        "scopeId": "scope_engineering",
+        "roleAssignments": [
+          {"id": "role_assign_def456", "roleId": "role_editor", "membershipId": "membership_abc123"}
+        ]
+      }
+    ]
+  },
+  {
+    "id": "subject_agent",
+    "subjectType": "agent",
+    "externalId": "coding-assistant-v1",
+    "displayName": "Coding Assistant",
+    "meta": {"model": "claude-3"},
+    "memberships": [
+      {
+        "id": "membership_ghi789",
+        "subjectId": "subject_agent",
+        "scopeId": "scope_engineering",
+        "roleAssignments": [
+          {"id": "role_assign_jkl012", "roleId": "role_viewer", "membershipId": "membership_ghi789"}
+        ]
+      }
+    ]
   }
 ]
 ```

@@ -1,217 +1,155 @@
 ---
 title: 'Quickstart'
-description: 'Set up Bedrock authorization in under 10 minutes'
+description: 'Set up Bedrock authorization in under 5 minutes'
 ---
 
 ## Overview
 
-This guide walks you through setting up a basic authorization structure with Bedrock. By the end, you'll have:
+This guide walks you through setting up a basic authorization structure with Bedrock using **batch operations** for efficiency. By the end, you'll have:
 
 - Scope types defining your organizational hierarchy
 - Scopes representing your organization and teams
 - Roles and permissions for access control
 - Both a user and an AI agent with appropriate access
 
-## Step 1: Define Your Scope Types
+<Info>
+  **Batch Operations**: All examples use batch endpoints to minimize API calls. IDs use a namespaced UUIDv7 format (e.g., `scope_type_org`). You can provide your own IDs for in-batch references.
+</Info>
 
-Scope types define the kinds of organizational units in your hierarchy. Common examples include organizations, teams, and projects.
+## Step 1: Set Up Your Hierarchy
 
-```bash
-# Create Organization scope type
-curl -X POST 'https://api.example.com/scope-types' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Organization",
-    "description": "Top-level organization"
-  }'
-
-# Create Team scope type
-curl -X POST 'https://api.example.com/scope-types' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Team",
-    "description": "Team within an organization"
-  }'
-```
-
-Then define the hierarchy relationship:
+Create scope types and their hierarchy relationship in two requests:
 
 ```bash
-# Teams can be children of Organizations
+# Create all scope types at once
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "scope_type_org", "name": "Organization", "config": {"permissionMode": "define"}},
+    {"id": "scope_type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
+  ]'
+
+# Define hierarchy: Teams can be children of Organizations
 curl -X POST 'https://api.example.com/scope-type-hierarchy' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "parentTypeId": "type_org",
-    "childTypeId": "type_team"
-  }'
+  -d '{"parentTypeId": "scope_type_org", "childTypeId": "scope_type_team"}'
 ```
 
-## Step 2: Create Scopes
+## Step 2: Create Your Organization Structure
 
-Now create actual scopes representing your organization:
+Create scopes and link them in the hierarchy:
 
 ```bash
-# Create your organization
-curl -X POST 'https://api.example.com/scopes' \
+# Create organization and team scopes
+curl -X POST 'https://api.example.com/scopes/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Acme Corp",
-    "typeId": "type_org",
-    "externalId": "acme-corp"
-  }'
-
-# Create a team
-curl -X POST 'https://api.example.com/scopes' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Engineering",
-    "typeId": "type_team",
-    "externalId": "engineering"
-  }'
+  -d '[
+    {"id": "scope_acme", "typeId": "scope_type_org", "name": "Acme Corp", "externalId": "acme-corp"},
+    {"id": "scope_engineering", "typeId": "scope_type_team", "name": "Engineering", "externalId": "engineering"}
+  ]'
 
 # Link team to organization
-curl -X POST 'https://api.example.com/scope-hierarchy' \
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "parentScopeId": "scope_acme",
-    "childScopeId": "scope_engineering"
-  }'
+  -d '[{"parentScopeId": "scope_acme", "childScopeId": "scope_engineering"}]'
 ```
 
-## Step 3: Create Roles and Permissions
+## Step 3: Define Roles and Permissions
 
-Define what actions are possible and group them into roles:
+Create permissions and roles, then assign permissions to roles:
 
 ```bash
-# Create permissions at the org level
-curl -X POST 'https://api.example.com/permissions' \
+# Create permissions
+curl -X POST 'https://api.example.com/permissions/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{"name": "read:documents", "scopeId": "scope_acme"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "write:documents", "scopeId": "scope_acme"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "delete:documents", "scopeId": "scope_acme"}'
+  -d '[
+    {"id": "permission_read", "scopeId": "scope_acme", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*", "label": "Read Documents"},
+    {"id": "permission_write", "scopeId": "scope_acme", "action": "write", "resourceType": "document", "resourcePattern": "*", "key": "document:write:*", "label": "Write Documents"},
+    {"id": "permission_delete", "scopeId": "scope_acme", "action": "delete", "resourceType": "document", "resourcePattern": "*", "key": "document:delete:*", "label": "Delete Documents"}
+  ]'
 
 # Create roles
-curl -X POST 'https://api.example.com/roles' \
+curl -X POST 'https://api.example.com/roles/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Viewer",
-    "description": "Read-only access",
-    "scopeId": "scope_acme"
-  }'
-
-curl -X POST 'https://api.example.com/roles' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "Editor",
-    "description": "Can read and write",
-    "scopeId": "scope_acme"
-  }'
+  -d '[
+    {"id": "role_viewer", "name": "Viewer", "description": "Read-only access", "scopeId": "scope_acme"},
+    {"id": "role_editor", "name": "Editor", "description": "Can read and write", "scopeId": "scope_acme"}
+  ]'
 
 # Assign permissions to roles
-curl -X POST 'https://api.example.com/role-permissions' \
+curl -X POST 'https://api.example.com/role-permissions/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{"roleId": "role_viewer", "permissionId": "perm_read"}'
-
-curl -X POST 'https://api.example.com/role-permissions' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{"roleId": "role_editor", "permissionId": "perm_read"}'
-
-curl -X POST 'https://api.example.com/role-permissions' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{"roleId": "role_editor", "permissionId": "perm_write"}'
+  -d '[
+    {"roleId": "role_viewer", "permissionId": "permission_read"},
+    {"roleId": "role_editor", "permissionId": "permission_read"},
+    {"roleId": "role_editor", "permissionId": "permission_write"}
+  ]'
 ```
 
-## Step 4: Add a User
+## Step 4: Add Users and Agents
 
-Create a user subject, add them to a scope, and assign a role:
-
-```bash
-# Create user subject
-curl -X POST 'https://api.example.com/subjects' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "type": "user",
-    "externalId": "user-jane-doe",
-    "metadata": {"name": "Jane Doe", "email": "jane@acme.com"}
-  }'
-
-# Add user to engineering team
-curl -X POST 'https://api.example.com/memberships' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "subjectId": "sub_jane",
-    "scopeId": "scope_engineering"
-  }'
-
-# Assign Editor role
-curl -X POST 'https://api.example.com/role-assignments' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "roleId": "role_editor",
-    "membershipId": "mem_jane_eng"
-  }'
-```
-
-## Step 5: Add an AI Agent
-
-Add an AI agent with more restricted permissions:
+Create subjects (user and AI agent), memberships, and role assignments:
 
 ```bash
-# Create agent subject
-curl -X POST 'https://api.example.com/subjects' \
+# Create subjects: a user and an AI agent
+curl -X POST 'https://api.example.com/subjects/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "type": "agent",
-    "externalId": "coding-assistant-v1",
-    "metadata": {"name": "Coding Assistant", "model": "claude-3"}
-  }'
+  -d '[
+    {
+      "id": "subject_jane",
+      "subjectType": "user",
+      "externalId": "user-jane-doe",
+      "displayName": "Jane Doe",
+      "meta": {"email": "jane@acme.com"}
+    },
+    {
+      "id": "subject_agent",
+      "subjectType": "agent",
+      "externalId": "coding-assistant-v1",
+      "displayName": "Coding Assistant",
+      "meta": {"model": "claude-3"}
+    }
+  ]'
 
-# Add agent to engineering team
-curl -X POST 'https://api.example.com/memberships' \
+# Add both to engineering team
+curl -X POST 'https://api.example.com/memberships/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "subjectId": "sub_agent",
-    "scopeId": "scope_engineering"
-  }'
+  -d '[
+    {"id": "membership_jane_eng", "subjectId": "subject_jane", "scopeId": "scope_engineering"},
+    {"id": "membership_agent_eng", "subjectId": "subject_agent", "scopeId": "scope_engineering"}
+  ]'
 
-# Assign Viewer role (read-only for the agent)
-curl -X POST 'https://api.example.com/role-assignments' \
+# Assign roles: Editor for Jane, Viewer for the agent
+curl -X POST 'https://api.example.com/role-assignments/batch' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "roleId": "role_viewer",
-    "membershipId": "mem_agent_eng"
-  }'
+  -d '[
+    {"roleId": "role_editor", "membershipId": "membership_jane_eng"},
+    {"roleId": "role_viewer", "membershipId": "membership_agent_eng"}
+  ]'
 ```
 
 <Check>
-  You now have a user with Editor access and an AI agent with Viewer access to the Engineering team!
+  **Done!** You now have a user with Editor access and an AI agent with Viewer access to the Engineering team - all set up in just 10 API calls!
 </Check>
+
+## What You Built
+
+```
+Acme Corp (Organization)
+└── Engineering (Team)
+    ├── Jane Doe (User) → Editor Role → read, write
+    └── Coding Assistant (Agent) → Viewer Role → read only
+```
 
 ## Next Steps
 
@@ -228,5 +166,4 @@ curl -X POST 'https://api.example.com/role-assignments' \
   <Card title="API Reference" icon="terminal" href="/api-reference/introduction">
     Explore the complete API
   </Card>
-
 </CardGroup>

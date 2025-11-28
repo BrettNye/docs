@@ -1,0 +1,103 @@
+---
+title: 'Create Tags (Batch)'
+api: 'POST /tags/batch'
+description: 'Create multiple tags in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple tags in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `tag_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of tag objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope
+</ParamField>
+
+<ParamField body="[].tagGroupId" type="string" required>
+  ID of the tag group
+</ParamField>
+
+<ParamField body="[].identifier" type="string" required>
+  Unique identifier for the tag within the group
+</ParamField>
+
+<ParamField body="[].label" type="string" required>
+  Display label for the tag
+</ParamField>
+
+## Response
+
+Returns an array of created tag objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tags/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "scopeId": "scope_acme",
+      "tagGroupId": "tag_group_priority",
+      "identifier": "high",
+      "label": "High Priority"
+    },
+    {
+      "scopeId": "scope_acme",
+      "tagGroupId": "tag_group_priority",
+      "identifier": "medium",
+      "label": "Medium Priority"
+    },
+    {
+      "scopeId": "scope_acme",
+      "tagGroupId": "tag_group_priority",
+      "identifier": "low",
+      "label": "Low Priority"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tag_high",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "high",
+    "label": "High Priority",
+    "createdBy": "system",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_medium",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "medium",
+    "label": "Medium Priority",
+    "createdBy": "system",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_low",
+    "scopeId": "scope_acme",
+    "tagGroupId": "tag_group_priority",
+    "identifier": "low",
+    "label": "Low Priority",
+    "createdBy": "system",
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

@@ -1,0 +1,90 @@
+---
+title: 'Create Roles (Batch)'
+api: 'POST /roles/batch'
+description: 'Create multiple roles in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple roles in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `role_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of role objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID
+</ParamField>
+
+<ParamField body="[].name" type="string" required>
+  Display name for the role
+</ParamField>
+
+<ParamField body="[].description" type="string">
+  Description of the role
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope where this role is defined
+</ParamField>
+
+## Response
+
+Returns an array of created role objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/roles/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "role_viewer",
+      "name": "Viewer",
+      "description": "Read-only access",
+      "scopeId": "scope_acme"
+    },
+    {
+      "id": "role_editor",
+      "name": "Editor",
+      "description": "Can read and write",
+      "scopeId": "scope_acme"
+    },
+    {
+      "id": "role_admin",
+      "name": "Admin",
+      "description": "Full access",
+      "scopeId": "scope_acme"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "role_viewer",
+    "name": "Viewer",
+    "description": "Read-only access",
+    "scopeId": "scope_acme"
+  },
+  {
+    "id": "role_editor",
+    "name": "Editor",
+    "description": "Can read and write",
+    "scopeId": "scope_acme"
+  },
+  {
+    "id": "role_admin",
+    "name": "Admin",
+    "description": "Full access",
+    "scopeId": "scope_acme"
+  }
+]
+```
+</ResponseExample>

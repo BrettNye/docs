@@ -5,7 +5,31 @@ description: 'Bedrock API Reference - Authorization and Access Control Managemen
 
 ## Welcome
 
-The Bedrock API provides a comprehensive authorization and access control system. It enables you to manage subjects (users, API keys, services, agents), scopes (organizational hierarchies), roles, permissions, and fine-grained access control through overrides.
+The Bedrock API provides a comprehensive authorization and access control system. It enables you to manage subjects (users, API keys, services, agents), scopes (organizational hierarchies), roles, permissions, resources, tags, and fine-grained access control through overrides.
+
+## ID Format
+
+All entity IDs use a **namespaced UUIDv7** format for easy identification and sorting:
+
+```
+{namespace}_{uuidv7}
+```
+
+| Namespace | Entity |
+|-----------|--------|
+| `subject` | Subjects (users, agents, etc.) |
+| `scope` | Scopes |
+| `scope_type` | Scope Types |
+| `role` | Roles |
+| `permission` | Permissions |
+| `resource` | Resources |
+| `resource_type` | Resource Types |
+| `tag` | Tags |
+| `tag_group` | Tag Groups |
+
+<Tip>
+  You can provide your own IDs when creating entities. This is useful for batch operations where you need to reference entities within the same request.
+</Tip>
 
 ## Core Concepts
 
@@ -22,6 +46,12 @@ The Bedrock API provides a comprehensive authorization and access control system
   <Card title="Permissions" icon="key" href="/api-reference/permissions/get-permission">
     Granular access rights (e.g., read:documents, write:documents)
   </Card>
+  <Card title="Resources" icon="file" href="/api-reference/resources/create-resource">
+    Protected objects with types and hierarchies
+  </Card>
+  <Card title="Tags" icon="tag" href="/api-reference/tags/create-tag">
+    Flexible metadata and categorization
+  </Card>
 </CardGroup>
 
 ## How It Works
@@ -29,7 +59,29 @@ The Bedrock API provides a comprehensive authorization and access control system
 1. **Subjects** are added to **Scopes** via **Memberships**
 2. **Roles** are assigned to **Memberships** via **Role Assignments**
 3. **Permissions** are assigned to **Roles** via **Role Permissions**
-4. **Scope Overrides** allow fine-tuning inherited roles/permissions at child scopes
+4. **Resources** are created within **Scopes** with **Resource Types**
+5. **Tags** can be applied to resources, subjects, and other entities
+6. **Scope Overrides** allow fine-tuning inherited roles/permissions at child scopes
+
+## Batch Operations
+
+Most create endpoints support batch operations via a `/batch` suffix. Batch requests:
+
+- Accept an array of objects
+- Support client-provided IDs for in-batch references
+- Validate ID uniqueness within the batch
+- Return an array of created entities
+
+```bash
+# Example: Create multiple scopes in one request
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "scope_org", "typeId": "scope_type_org", "name": "Acme"},
+    {"id": "scope_team", "typeId": "scope_type_team", "name": "Engineering"}
+  ]'
+```
 
 ## Authentication
 
@@ -61,3 +113,6 @@ https://api.example.com
 | **Scope Hierarchy** | Manage parent-child scope relationships |
 | **Scope Type Hierarchy** | Define valid type relationships |
 | **Scope Overrides** | Override inherited roles/permissions at child scopes |
+| **Resource Types** | Define categories of protected resources |
+| **Resources** | Manage protected objects within scopes |
+| **Tags** | Flexible metadata and categorization system |

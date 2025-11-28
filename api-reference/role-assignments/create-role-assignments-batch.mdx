@@ -1,0 +1,58 @@
+---
+title: 'Create Role Assignments (Batch)'
+api: 'POST /role-assignments/batch'
+description: 'Assign multiple roles to memberships in a single request'
+---
+
+## Overview
+
+Batch creation allows you to assign multiple roles to memberships in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `role_assign_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of role assignment objects:
+
+<ParamField body="[].roleId" type="string" required>
+  ID of the role to assign
+</ParamField>
+
+<ParamField body="[].membershipId" type="string" required>
+  ID of the membership to assign the role to
+</ParamField>
+
+## Response
+
+Returns an array of created role assignment objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/role-assignments/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"roleId": "role_editor", "membershipId": "membership_jane_eng"},
+    {"roleId": "role_viewer", "membershipId": "membership_agent_eng"}
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "role_assign_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "roleId": "role_editor",
+    "membershipId": "membership_jane_eng"
+  },
+  {
+    "id": "role_assign_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "roleId": "role_viewer",
+    "membershipId": "membership_agent_eng"
+  }
+]
+```
+</ResponseExample>

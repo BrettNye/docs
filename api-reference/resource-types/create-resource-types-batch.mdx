@@ -1,0 +1,82 @@
+---
+title: 'Create Resource Types (Batch)'
+api: 'POST /resource-types/batch'
+description: 'Create multiple resource types in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple resource types in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `resource_type_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of resource type objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID
+</ParamField>
+
+<ParamField body="[].name" type="string" required>
+  Display name for the resource type
+</ParamField>
+
+<ParamField body="[].key" type="string" required>
+  Unique key for the resource type within the scope
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope where this resource type is defined
+</ParamField>
+
+## Response
+
+Returns an array of created resource type objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "resource_type_document",
+      "name": "Document",
+      "key": "document",
+      "scopeId": "scope_acme"
+    },
+    {
+      "id": "resource_type_folder",
+      "name": "Folder",
+      "key": "folder",
+      "scopeId": "scope_acme"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "resource_type_document",
+    "name": "Document",
+    "key": "document",
+    "scopeId": "scope_acme",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "system"
+  },
+  {
+    "id": "resource_type_folder",
+    "name": "Folder",
+    "key": "folder",
+    "scopeId": "scope_acme",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "createdBy": "system"
+  }
+]
+```
+</ResponseExample>

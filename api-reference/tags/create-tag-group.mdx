@@ -1,0 +1,76 @@
+---
+title: 'Create Tag Group'
+api: 'POST /tag-groups'
+description: 'Create a new tag group'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `tag_group_{uuidv7}`
+</ParamField>
+
+<ParamField body="scopeId" type="string" required>
+  ID of the scope where this tag group is defined
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name for the tag group
+</ParamField>
+
+<ParamField body="key" type="string" required>
+  Unique key for the tag group within the scope
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Description of the tag group
+</ParamField>
+
+<ParamField body="origin" type="string" required>
+  Origin of the tag group. One of: `system`, `user`
+</ParamField>
+
+<ParamField body="maxAppliedPerTarget" type="number">
+  Maximum number of tags from this group that can be applied to a single target
+</ParamField>
+
+<ParamField body="isLocked" type="boolean">
+  Whether the tag group is locked from modifications
+</ParamField>
+
+## Response
+
+Returns the created tag group object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tag-groups' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_acme",
+    "name": "Priority",
+    "key": "priority",
+    "description": "Task priority levels",
+    "origin": "user",
+    "maxAppliedPerTarget": 1
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_group_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "scopeId": "scope_acme",
+  "name": "Priority",
+  "key": "priority",
+  "description": "Task priority levels",
+  "origin": "user",
+  "maxAppliedPerTarget": 1,
+  "isLocked": false,
+  "createdBy": "system",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

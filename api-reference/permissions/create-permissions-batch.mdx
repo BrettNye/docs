@@ -1,0 +1,102 @@
+---
+title: 'Create Permissions (Batch)'
+api: 'POST /permissions/batch'
+description: 'Create multiple permissions in a single request'
+---
+
+## Overview
+
+Batch creation allows you to create multiple permissions in a single API call.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `permission_{uuidv7}`.
+</Info>
+
+## Request Body
+
+Array of permission objects:
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope where this permission is defined
+</ParamField>
+
+<ParamField body="[].action" type="string" required>
+  The action this permission grants (e.g., read, write, delete)
+</ParamField>
+
+<ParamField body="[].resourceType" type="string" required>
+  The type of resource this permission applies to
+</ParamField>
+
+<ParamField body="[].resourcePattern" type="string" required>
+  Pattern matching resources (use * for all)
+</ParamField>
+
+<ParamField body="[].key" type="string" required>
+  Unique key for the permission
+</ParamField>
+
+<ParamField body="[].label" type="string">
+  Display label for the permission
+</ParamField>
+
+## Response
+
+Returns an array of created permission objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "permission_read",
+      "scopeId": "scope_acme",
+      "action": "read",
+      "resourceType": "document",
+      "resourcePattern": "*",
+      "key": "document:read:*",
+      "label": "Read Documents"
+    },
+    {
+      "id": "permission_write",
+      "scopeId": "scope_acme",
+      "action": "write",
+      "resourceType": "document",
+      "resourcePattern": "*",
+      "key": "document:write:*",
+      "label": "Write Documents"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "permission_read",
+    "scopeId": "scope_acme",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:*",
+    "label": "Read Documents"
+  },
+  {
+    "id": "permission_write",
+    "scopeId": "scope_acme",
+    "action": "write",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:write:*",
+    "label": "Write Documents"
+  }
+]
+```
+</ResponseExample>

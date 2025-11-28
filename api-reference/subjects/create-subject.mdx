@@ -4,9 +4,21 @@ api: 'POST /subjects'
 description: 'Create a new subject in the system'
 ---
 
+## Overview
+
+Create a new subject (user, agent, API key, or service). Optionally add the subject to scopes and assign roles in a single request using inline memberships.
+
+<Info>
+  **ID Format**: All IDs use a namespaced UUIDv7 format: `subject_{uuidv7}`. You can optionally provide your own ID.
+</Info>
+
 ## Request Body
 
-<ParamField body="type" type="string" required>
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `subject_{uuidv7}`
+</ParamField>
+
+<ParamField body="subjectType" type="string" required>
   Subject type. One of: `user`, `api_key`, `service`, `agent`
 </ParamField>
 
@@ -14,36 +26,73 @@ description: 'Create a new subject in the system'
   External identifier for the subject (e.g., user ID from your auth system)
 </ParamField>
 
-<ParamField body="metadata" type="object">
+<ParamField body="displayName" type="string">
+  Display name for the subject
+</ParamField>
+
+<ParamField body="meta" type="object">
   Optional metadata to associate with the subject
+</ParamField>
+
+<ParamField body="memberships" type="array">
+  Optional inline memberships with role assignments. Creates memberships and role assignments in a single request.
+</ParamField>
+
+<ParamField body="memberships[].scopeId" type="string" required>
+  ID of the scope to add the subject to
+</ParamField>
+
+<ParamField body="memberships[].roleIds" type="array">
+  Optional array of role IDs to assign to the membership
 </ParamField>
 
 ## Response
 
-Returns the created subject object.
+Returns the created subject object. If memberships were provided, includes the created memberships with their role assignments.
 
 <RequestExample>
-```bash cURL
+```bash cURL (Basic)
 curl -X POST 'https://api.example.com/subjects' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
-    "type": "user",
+    "subjectType": "user",
     "externalId": "user-456",
-    "metadata": {
-      "name": "John Doe",
-      "email": "john@example.com"
-    }
+    "displayName": "John Doe",
+    "meta": {"email": "john@example.com"}
+  }'
+```
+
+```bash cURL (With Memberships)
+curl -X POST 'https://api.example.com/subjects' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "user-jane",
+    "displayName": "Jane Doe",
+    "meta": {"email": "jane@acme.com"},
+    "memberships": [
+      {
+        "scopeId": "scope_engineering",
+        "roleIds": ["role_editor"]
+      }
+    ]
   }'
 ```
 
 ```javascript Node.js
 const axios = require('axios');
 
+// Create user with membership and role assignment
 const { data } = await axios.post('https://api.example.com/subjects', {
-  type: 'user',
-  externalId: 'user-456',
-  metadata: { name: 'John Doe', email: 'john@example.com' },
+  subjectType: 'user',
+  externalId: 'user-jane',
+  displayName: 'Jane Doe',
+  meta: { email: 'jane@acme.com' },
+  memberships: [
+    { scopeId: 'scope_engineering', roleIds: ['role_editor'] }
+  ]
 }, {
   headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
 });
@@ -51,15 +100,37 @@ const { data } = await axios.post('https://api.example.com/subjects', {
 </RequestExample>
 
 <ResponseExample>
-```json Response
+```json Basic Response
 {
-  "id": "sub_123",
-  "type": "user",
+  "id": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "subjectType": "user",
   "externalId": "user-456",
-  "metadata": {
-    "name": "John Doe",
-    "email": "john@example.com"
-  }
+  "displayName": "John Doe",
+  "meta": {"email": "john@example.com"}
+}
+```
+
+```json Response with Memberships
+{
+  "id": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "subjectType": "user",
+  "externalId": "user-jane",
+  "displayName": "Jane Doe",
+  "meta": {"email": "jane@acme.com"},
+  "memberships": [
+    {
+      "id": "membership_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+      "subjectId": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+      "scopeId": "scope_engineering",
+      "roleAssignments": [
+        {
+          "id": "role_assign_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d",
+          "roleId": "role_editor",
+          "membershipId": "membership_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c"
+        }
+      ]
+    }
+  ]
 }
 ```
 </ResponseExample>
