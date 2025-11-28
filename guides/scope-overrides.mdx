@@ -194,15 +194,14 @@ curl -X DELETE 'https://api.example.com/scope-overrides/role-permissions/scope_p
 Restrict dangerous operations in production:
 
 ```bash
-# Disable destructive permissions
-curl -X POST 'https://api.example.com/scope-overrides/permissions' \
-  -d '{"childScopeId": "scope_prod", "permissionId": "perm_delete", "state": "disabled"}'
-
-curl -X POST 'https://api.example.com/scope-overrides/permissions' \
-  -d '{"childScopeId": "scope_prod", "permissionId": "perm_execute", "state": "disabled"}'
-
-curl -X POST 'https://api.example.com/scope-overrides/permissions' \
-  -d '{"childScopeId": "scope_prod", "permissionId": "perm_modify_infra", "state": "disabled"}'
+# Disable multiple destructive permissions at once
+curl -X POST 'https://api.example.com/scope-overrides/permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"childScopeId": "scope_prod", "permissionId": "perm_delete", "state": "disabled"},
+    {"childScopeId": "scope_prod", "permissionId": "perm_execute", "state": "disabled"},
+    {"childScopeId": "scope_prod", "permissionId": "perm_modify_infra", "state": "disabled"}
+  ]'
 ```
 
 ### Pattern 2: Agent Sandboxing
@@ -210,23 +209,13 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
 Restrict agent capabilities in sensitive areas:
 
 ```bash
-# Agents can't write to customer data
-curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
-  -d '{
-    "childScopeId": "scope_customer_data",
-    "roleId": "role_agent",
-    "permissionId": "perm_write",
-    "state": "disabled"
-  }'
-
-# Agents can't access PII
-curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
-  -d '{
-    "childScopeId": "scope_pii",
-    "roleId": "role_agent",
-    "permissionId": "perm_read",
-    "state": "disabled"
-  }'
+# Batch restrict agent permissions in sensitive scopes
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"childScopeId": "scope_customer_data", "roleId": "role_agent", "permissionId": "perm_write", "state": "disabled"},
+    {"childScopeId": "scope_pii", "roleId": "role_agent", "permissionId": "perm_read", "state": "disabled"}
+  ]'
 ```
 
 ### Pattern 3: Temporary Restrictions
@@ -251,13 +240,14 @@ curl -X DELETE 'https://api.example.com/scope-overrides/permissions/scope_affect
 Create compliance zones with restricted access:
 
 ```bash
-# SOC2 compliance zone
-curl -X POST 'https://api.example.com/scope-overrides/permissions' \
-  -d '{"childScopeId": "scope_soc2", "permissionId": "perm_export_data", "state": "disabled"}'
-
-# HIPAA compliance zone
-curl -X POST 'https://api.example.com/scope-overrides/permissions' \
-  -d '{"childScopeId": "scope_hipaa", "permissionId": "perm_share_external", "state": "disabled"}'
+# Set up multiple compliance zones at once
+curl -X POST 'https://api.example.com/scope-overrides/permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"childScopeId": "scope_soc2", "permissionId": "perm_export_data", "state": "disabled"},
+    {"childScopeId": "scope_hipaa", "permissionId": "perm_share_external", "state": "disabled"},
+    {"childScopeId": "scope_hipaa", "permissionId": "perm_export_data", "state": "disabled"}
+  ]'
 ```
 
 ## Best Practices

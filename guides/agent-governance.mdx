@@ -62,29 +62,14 @@ curl -X POST 'https://api.example.com/subjects' \
 Define roles tailored for agent capabilities:
 
 ```bash
-# Read-only code access
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Code Reader",
-    "description": "Can read code and documentation",
-    "scopeId": "scope_engineering"
-  }'
-
-# Code modification access
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Code Writer",
-    "description": "Can read and modify code",
-    "scopeId": "scope_engineering"
-  }'
-
-# Full agent access (use sparingly)
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Autonomous Agent",
-    "description": "Full autonomous access",
-    "scopeId": "scope_engineering"
-  }'
+# Create all agent roles at once
+curl -X POST 'https://api.example.com/roles/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "role_code_reader", "name": "Code Reader", "description": "Can read code and documentation", "scopeId": "scope_engineering"},
+    {"id": "role_code_writer", "name": "Code Writer", "description": "Can read and modify code", "scopeId": "scope_engineering"},
+    {"id": "role_autonomous", "name": "Autonomous Agent", "description": "Full autonomous access", "scopeId": "scope_engineering"}
+  ]'
 ```
 
 ### 3. Define Agent Permissions
@@ -92,58 +77,52 @@ curl -X POST 'https://api.example.com/roles' \
 Create granular permissions for agent actions:
 
 ```bash
-# Code permissions
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "read:code", "scopeId": "scope_engineering"}'
+# Create all permissions at once
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "perm_read_code", "scopeId": "scope_engineering", "action": "read", "resourceType": "code", "resourcePattern": "*", "key": "code:read:*"},
+    {"id": "perm_write_code", "scopeId": "scope_engineering", "action": "write", "resourceType": "code", "resourcePattern": "*", "key": "code:write:*"},
+    {"id": "perm_execute_code", "scopeId": "scope_engineering", "action": "execute", "resourceType": "code", "resourcePattern": "*", "key": "code:execute:*"},
+    {"id": "perm_read_infra", "scopeId": "scope_engineering", "action": "read", "resourceType": "infrastructure", "resourcePattern": "*", "key": "infrastructure:read:*"},
+    {"id": "perm_modify_infra", "scopeId": "scope_engineering", "action": "modify", "resourceType": "infrastructure", "resourcePattern": "*", "key": "infrastructure:modify:*"},
+    {"id": "perm_read_data", "scopeId": "scope_engineering", "action": "read", "resourceType": "data", "resourcePattern": "*", "key": "data:read:*"},
+    {"id": "perm_write_data", "scopeId": "scope_engineering", "action": "write", "resourceType": "data", "resourcePattern": "*", "key": "data:write:*"}
+  ]'
 
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "write:code", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "execute:code", "scopeId": "scope_engineering"}'
-
-# Infrastructure permissions
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "read:infrastructure", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "modify:infrastructure", "scopeId": "scope_engineering"}'
-
-# Data permissions
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "read:data", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "write:data", "scopeId": "scope_engineering"}'
-
-# Assign to roles
-curl -X POST 'https://api.example.com/role-permissions' \
-  -d '{"roleId": "role_code_reader", "permissionId": "perm_read_code"}'
-
-curl -X POST 'https://api.example.com/role-permissions' \
-  -d '{"roleId": "role_code_writer", "permissionId": "perm_read_code"}'
-
-curl -X POST 'https://api.example.com/role-permissions' \
-  -d '{"roleId": "role_code_writer", "permissionId": "perm_write_code"}'
+# Assign permissions to roles
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"roleId": "role_code_reader", "permissionId": "perm_read_code"},
+    {"roleId": "role_code_writer", "permissionId": "perm_read_code"},
+    {"roleId": "role_code_writer", "permissionId": "perm_write_code"}
+  ]'
 ```
 
 ### 4. Add Agent to Scope with Restricted Role
 
-```bash
-# Add agent to engineering scope
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{
-    "subjectId": "sub_coding_assistant",
-    "scopeId": "scope_engineering"
-  }'
+You can create the agent with inline membership and role assignment:
 
-# Assign Code Reader role (read-only by default)
-curl -X POST 'https://api.example.com/role-assignments' \
+```bash
+# Create agent with membership and role in one request
+curl -X POST 'https://api.example.com/subjects' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "roleId": "role_code_reader",
-    "membershipId": "mem_agent_eng"
+    "id": "sub_coding_assistant",
+    "subjectType": "agent",
+    "externalId": "coding-assistant-v1",
+    "displayName": "Coding Assistant",
+    "meta": {"model": "claude-3-sonnet", "version": "1.0.0"},
+    "memberships": [
+      {"scopeId": "scope_engineering", "roleIds": ["role_code_reader"]}
+    ]
   }'
 ```
+
+<Info>
+  **Inline Memberships**: The `memberships` array creates the membership and role assignments automatically when the subject is created.
+</Info>
 
 ## Advanced Patterns
 
@@ -207,19 +186,29 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
 ### Pattern 4: Multiple Agents with Different Access
 
 ```bash
-# Coding assistant - code access
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "agent", "externalId": "coding-assistant"}'
-
-# Documentation agent - docs access only
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "agent", "externalId": "docs-assistant"}'
-
-# Security scanner - read-only infrastructure
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "agent", "externalId": "security-scanner"}'
-
-# Each gets appropriate role assignments...
+# Create multiple agents with their roles in one batch
+curl -X POST 'https://api.example.com/subjects/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "subjectType": "agent",
+      "externalId": "coding-assistant",
+      "displayName": "Coding Assistant",
+      "memberships": [{"scopeId": "scope_engineering", "roleIds": ["role_code_writer"]}]
+    },
+    {
+      "subjectType": "agent",
+      "externalId": "docs-assistant",
+      "displayName": "Documentation Agent",
+      "memberships": [{"scopeId": "scope_engineering", "roleIds": ["role_code_reader"]}]
+    },
+    {
+      "subjectType": "agent",
+      "externalId": "security-scanner",
+      "displayName": "Security Scanner",
+      "memberships": [{"scopeId": "scope_engineering", "roleIds": ["role_code_reader"]}]
+    }
+  ]'
 ```
 
 ## MCP Server Integration
@@ -227,21 +216,16 @@ curl -X POST 'https://api.example.com/subjects' \
 When using [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers, Bedrock can govern which tools and resources agents can access:
 
 ```bash
-# Create MCP-specific permissions
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "mcp:filesystem:read", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "mcp:filesystem:write", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "mcp:database:query", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "mcp:github:read", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "mcp:github:write", "scopeId": "scope_engineering"}'
+# Create MCP-specific permissions in batch
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "perm_mcp_fs_read", "scopeId": "scope_engineering", "action": "read", "resourceType": "mcp:filesystem", "resourcePattern": "*", "key": "mcp:filesystem:read:*"},
+    {"id": "perm_mcp_fs_write", "scopeId": "scope_engineering", "action": "write", "resourceType": "mcp:filesystem", "resourcePattern": "*", "key": "mcp:filesystem:write:*"},
+    {"id": "perm_mcp_db_query", "scopeId": "scope_engineering", "action": "query", "resourceType": "mcp:database", "resourcePattern": "*", "key": "mcp:database:query:*"},
+    {"id": "perm_mcp_gh_read", "scopeId": "scope_engineering", "action": "read", "resourceType": "mcp:github", "resourcePattern": "*", "key": "mcp:github:read:*"},
+    {"id": "perm_mcp_gh_write", "scopeId": "scope_engineering", "action": "write", "resourceType": "mcp:github", "resourcePattern": "*", "key": "mcp:github:write:*"}
+  ]'
 ```
 
 Your MCP server can then check Bedrock permissions before executing tools.
@@ -257,11 +241,10 @@ const engine = new BedrockEngine(store);
 
 // Check if an agent can perform an action
 const decision = await engine.evaluate({
-  actor: { subjectId: 'agent_coding_assistant' },
+  actor: { subjectId: 'agent_coding_assistant', subjectType: 'agent' },
   scopeId: 'scope_engineering',
   action: 'write',
-  resourceType: 'code',
-  resourcePattern: '*',
+  resource: { resourceType: 'code', resourcePattern: '*' },
 });
 
 if (decision.allowed) {
@@ -281,11 +264,11 @@ When an agent acts on behalf of a user, both must have permission:
 
 ```typescript
 const decision = await engine.evaluate({
-  actor: { subjectId: 'agent_coding_assistant' },
-  onBehalfOf: { subjectId: 'user_jane' },
+  actor: { subjectId: 'agent_coding_assistant', subjectType: 'agent' },
+  onBehalfOf: { subjectId: 'user_jane', subjectType: 'user' },
   scopeId: 'scope_engineering',
   action: 'write',
-  resourceType: 'code',
+  resource: { resourceType: 'code' },
 });
 
 // Both actor (agent) AND principal (user) must be allowed

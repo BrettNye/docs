@@ -32,15 +32,14 @@ Let's set up a typical enterprise structure with organizations, departments, and
 ### 1. Define the Hierarchy
 
 ```bash
-# Create scope types
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Organization"}'
-
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Department"}'
-
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Team"}'
+# Create all scope types at once
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "type_org", "name": "Organization", "config": {"permissionMode": "define"}},
+    {"id": "type_dept", "name": "Department", "config": {"permissionMode": "inherit"}},
+    {"id": "type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
+  ]'
 
 # Define hierarchy: Org → Department → Team
 curl -X POST 'https://api.example.com/scope-type-hierarchy' \
@@ -53,30 +52,26 @@ curl -X POST 'https://api.example.com/scope-type-hierarchy' \
 ### 2. Create Scopes
 
 ```bash
-# Organization
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Acme Corp", "typeId": "type_org"}'
-
-# Departments
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Engineering", "typeId": "type_dept"}'
-
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Marketing", "typeId": "type_dept"}'
-
-# Teams
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Platform Team", "typeId": "type_team"}'
-
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Frontend Team", "typeId": "type_team"}'
+# Create all scopes at once
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "scope_acme", "name": "Acme Corp", "typeId": "type_org"},
+    {"id": "scope_engineering", "name": "Engineering", "typeId": "type_dept"},
+    {"id": "scope_marketing", "name": "Marketing", "typeId": "type_dept"},
+    {"id": "scope_platform", "name": "Platform Team", "typeId": "type_team"},
+    {"id": "scope_frontend", "name": "Frontend Team", "typeId": "type_team"}
+  ]'
 
 # Link hierarchy
-curl -X POST 'https://api.example.com/scope-hierarchy' \
-  -d '{"parentScopeId": "scope_acme", "childScopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/scope-hierarchy' \
-  -d '{"parentScopeId": "scope_engineering", "childScopeId": "scope_platform"}'
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"parentScopeId": "scope_acme", "childScopeId": "scope_engineering"},
+    {"parentScopeId": "scope_acme", "childScopeId": "scope_marketing"},
+    {"parentScopeId": "scope_engineering", "childScopeId": "scope_platform"},
+    {"parentScopeId": "scope_engineering", "childScopeId": "scope_frontend"}
+  ]'
 ```
 
 ### 3. Define Roles at Different Levels
@@ -84,72 +79,57 @@ curl -X POST 'https://api.example.com/scope-hierarchy' \
 Roles can be defined at any scope level and inherited by child scopes:
 
 ```bash
-# Organization-wide roles
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Org Admin",
-    "description": "Full organization access",
-    "scopeId": "scope_acme"
-  }'
-
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Org Member",
-    "description": "Basic organization access",
-    "scopeId": "scope_acme"
-  }'
-
-# Department-specific roles
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Dept Manager",
-    "description": "Department management access",
-    "scopeId": "scope_engineering"
-  }'
-
-# Team-specific roles
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Team Lead",
-    "description": "Team leadership access",
-    "scopeId": "scope_platform"
-  }'
+# Create all roles at once
+curl -X POST 'https://api.example.com/roles/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "role_org_admin", "name": "Org Admin", "description": "Full organization access", "scopeId": "scope_acme"},
+    {"id": "role_org_member", "name": "Org Member", "description": "Basic organization access", "scopeId": "scope_acme"},
+    {"id": "role_dept_manager", "name": "Dept Manager", "description": "Department management access", "scopeId": "scope_engineering"},
+    {"id": "role_team_lead", "name": "Team Lead", "description": "Team leadership access", "scopeId": "scope_platform"}
+  ]'
 ```
 
 ### 4. Add Users with Different Access Levels
 
 ```bash
-# Create users
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "user", "externalId": "ceo-john", "metadata": {"name": "John CEO"}}'
-
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "user", "externalId": "eng-manager-sarah", "metadata": {"name": "Sarah"}}'
-
-curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "user", "externalId": "dev-mike", "metadata": {"name": "Mike"}}'
-
-# CEO gets Org Admin at organization level
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_john", "scopeId": "scope_acme"}'
-
-curl -X POST 'https://api.example.com/role-assignments' \
-  -d '{"roleId": "role_org_admin", "membershipId": "mem_john_acme"}'
-
-# Sarah is Engineering Department Manager
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_sarah", "scopeId": "scope_engineering"}'
-
-curl -X POST 'https://api.example.com/role-assignments' \
-  -d '{"roleId": "role_dept_manager", "membershipId": "mem_sarah_eng"}'
-
-# Mike is a Platform Team member
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_mike", "scopeId": "scope_platform"}'
-
-curl -X POST 'https://api.example.com/role-assignments' \
-  -d '{"roleId": "role_org_member", "membershipId": "mem_mike_platform"}'
+# Create all users at once with inline memberships and role assignments
+curl -X POST 'https://api.example.com/subjects/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "id": "sub_john",
+      "subjectType": "user",
+      "externalId": "ceo-john",
+      "displayName": "John CEO",
+      "memberships": [
+        {"scopeId": "scope_acme", "roleIds": ["role_org_admin"]}
+      ]
+    },
+    {
+      "id": "sub_sarah",
+      "subjectType": "user",
+      "externalId": "eng-manager-sarah",
+      "displayName": "Sarah",
+      "memberships": [
+        {"scopeId": "scope_engineering", "roleIds": ["role_dept_manager"]}
+      ]
+    },
+    {
+      "id": "sub_mike",
+      "subjectType": "user",
+      "externalId": "dev-mike",
+      "displayName": "Mike",
+      "memberships": [
+        {"scopeId": "scope_platform", "roleIds": ["role_org_member"]}
+      ]
+    }
+  ]'
 ```
+
+<Info>
+  **Inline Memberships**: When creating subjects, you can include `memberships` with `roleIds` to create the subject, membership, and role assignments in a single request.
+</Info>
 
 ## Common Patterns
 

@@ -27,19 +27,16 @@ Platform (global scope)
 ### 1. Define Scope Types
 
 ```bash
-# Platform level (your SaaS)
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Platform", "description": "Top-level platform scope"}'
+# Create all scope types at once
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "type_platform", "name": "Platform", "config": {"permissionMode": "define"}},
+    {"id": "type_tenant", "name": "Tenant", "config": {"permissionMode": "inherit"}},
+    {"id": "type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
+  ]'
 
-# Tenant level (your customers)
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Tenant", "description": "Customer tenant"}'
-
-# Team level (within tenants)
-curl -X POST 'https://api.example.com/scope-types' \
-  -d '{"name": "Team", "description": "Team within a tenant"}'
-
-# Define hierarchy
+# Define hierarchy: Platform → Tenant → Team
 curl -X POST 'https://api.example.com/scope-type-hierarchy' \
   -d '{"parentTypeId": "type_platform", "childTypeId": "type_tenant"}'
 
@@ -50,65 +47,37 @@ curl -X POST 'https://api.example.com/scope-type-hierarchy' \
 ### 2. Create Platform and Tenants
 
 ```bash
-# Platform scope
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "My SaaS Platform", "typeId": "type_platform"}'
-
-# Tenant scopes
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Acme Corp", "typeId": "type_tenant", "externalId": "tenant-acme"}'
-
-curl -X POST 'https://api.example.com/scopes' \
-  -d '{"name": "Globex Inc", "typeId": "type_tenant", "externalId": "tenant-globex"}'
+# Create platform and all tenant scopes at once
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "scope_platform", "name": "My SaaS Platform", "typeId": "type_platform"},
+    {"id": "scope_acme", "name": "Acme Corp", "typeId": "type_tenant", "externalId": "tenant-acme"},
+    {"id": "scope_globex", "name": "Globex Inc", "typeId": "type_tenant", "externalId": "tenant-globex"}
+  ]'
 
 # Link tenants to platform
-curl -X POST 'https://api.example.com/scope-hierarchy' \
-  -d '{"parentScopeId": "scope_platform", "childScopeId": "scope_acme"}'
-
-curl -X POST 'https://api.example.com/scope-hierarchy' \
-  -d '{"parentScopeId": "scope_platform", "childScopeId": "scope_globex"}'
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"parentScopeId": "scope_platform", "childScopeId": "scope_acme"},
+    {"parentScopeId": "scope_platform", "childScopeId": "scope_globex"}
+  ]'
 ```
 
 ### 3. Define Platform-wide and Tenant-specific Roles
 
 ```bash
-# Platform-wide roles (for your internal team)
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Platform Admin",
-    "description": "Full platform access",
-    "scopeId": "scope_platform"
-  }'
-
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Support Agent",
-    "description": "Customer support access",
-    "scopeId": "scope_platform"
-  }'
-
-# Tenant-level roles (available to all tenants)
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Tenant Admin",
-    "description": "Full tenant access",
-    "scopeId": "scope_platform"
-  }'
-
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Tenant Member",
-    "description": "Basic tenant access",
-    "scopeId": "scope_platform"
-  }'
-
-# Tenant-specific roles (only for Acme)
-curl -X POST 'https://api.example.com/roles' \
-  -d '{
-    "name": "Acme Auditor",
-    "description": "Acme-specific audit role",
-    "scopeId": "scope_acme"
-  }'
+# Create all roles at once
+curl -X POST 'https://api.example.com/roles/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "role_platform_admin", "name": "Platform Admin", "description": "Full platform access", "scopeId": "scope_platform"},
+    {"id": "role_support_agent", "name": "Support Agent", "description": "Customer support access", "scopeId": "scope_platform"},
+    {"id": "role_tenant_admin", "name": "Tenant Admin", "description": "Full tenant access", "scopeId": "scope_platform"},
+    {"id": "role_tenant_member", "name": "Tenant Member", "description": "Basic tenant access", "scopeId": "scope_platform"},
+    {"id": "role_acme_auditor", "name": "Acme Auditor", "description": "Acme-specific audit role", "scopeId": "scope_acme"}
+  ]'
 ```
 
 ## Tenant Isolation
@@ -116,12 +85,17 @@ curl -X POST 'https://api.example.com/roles' \
 ### Users Can Only Access Their Tenant
 
 ```bash
-# Acme user
+# Create Acme user with membership in one request
 curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "user", "externalId": "acme-user-1"}'
-
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_acme_user", "scopeId": "scope_acme"}'
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "acme-user-1",
+    "displayName": "Acme User",
+    "memberships": [
+      {"scopeId": "scope_acme", "roleIds": ["role_tenant_member"]}
+    ]
+  }'
 
 # This user has NO access to Globex tenant
 # They can only access scope_acme and its children
@@ -130,16 +104,17 @@ curl -X POST 'https://api.example.com/memberships' \
 ### Cross-tenant Access (Support Agents)
 
 ```bash
-# Support agent needs access to multiple tenants
+# Support agent with platform-level access
 curl -X POST 'https://api.example.com/subjects' \
-  -d '{"type": "user", "externalId": "support-agent-1"}'
-
-# Add to platform level with Support Agent role
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_support", "scopeId": "scope_platform"}'
-
-curl -X POST 'https://api.example.com/role-assignments' \
-  -d '{"roleId": "role_support_agent", "membershipId": "mem_support_platform"}'
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "support-agent-1",
+    "displayName": "Support Agent",
+    "memberships": [
+      {"scopeId": "scope_platform", "roleIds": ["role_support_agent"]}
+    ]
+  }'
 
 # Support agent can now access all tenants (based on role permissions)
 ```
@@ -151,16 +126,18 @@ curl -X POST 'https://api.example.com/role-assignments' \
 Each tenant can have their own AI agents:
 
 ```bash
-# Acme's coding assistant
+# Acme's coding assistant - scoped to Acme only
 curl -X POST 'https://api.example.com/subjects' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "type": "agent",
+    "subjectType": "agent",
     "externalId": "acme-coding-assistant",
-    "metadata": {"tenant": "acme", "purpose": "code-review"}
+    "displayName": "Acme Coding Assistant",
+    "meta": {"tenant": "acme", "purpose": "code-review"},
+    "memberships": [
+      {"scopeId": "scope_acme", "roleIds": ["role_tenant_member"]}
+    ]
   }'
-
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_acme_agent", "scopeId": "scope_acme"}'
 
 # This agent can ONLY access Acme's scope
 ```
@@ -170,20 +147,18 @@ curl -X POST 'https://api.example.com/memberships' \
 Some agents may need cross-tenant access:
 
 ```bash
-# Platform analytics agent
+# Platform analytics agent with read-only access
 curl -X POST 'https://api.example.com/subjects' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "type": "agent",
+    "subjectType": "agent",
     "externalId": "platform-analytics-agent",
-    "metadata": {"purpose": "cross-tenant-analytics"}
+    "displayName": "Platform Analytics Agent",
+    "meta": {"purpose": "cross-tenant-analytics"},
+    "memberships": [
+      {"scopeId": "scope_platform", "roleIds": ["role_analytics_reader"]}
+    ]
   }'
-
-curl -X POST 'https://api.example.com/memberships' \
-  -d '{"subjectId": "sub_analytics_agent", "scopeId": "scope_platform"}'
-
-# Assign read-only role
-curl -X POST 'https://api.example.com/role-assignments' \
-  -d '{"roleId": "role_analytics_reader", "membershipId": "mem_analytics_platform"}'
 ```
 
 ### Restricting Platform Agents in Specific Tenants
@@ -206,14 +181,14 @@ curl -X POST 'https://api.example.com/scope-overrides/roles' \
 
 ```bash
 # Create permissions at platform level (inherited by all tenants)
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "read:data", "scopeId": "scope_platform"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "write:data", "scopeId": "scope_platform"}'
-
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "admin:tenant", "scopeId": "scope_platform"}'
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "perm_read_data", "scopeId": "scope_platform", "action": "read", "resourceType": "data", "resourcePattern": "*", "key": "data:read:*"},
+    {"id": "perm_write_data", "scopeId": "scope_platform", "action": "write", "resourceType": "data", "resourcePattern": "*", "key": "data:write:*"},
+    {"id": "perm_delete_data", "scopeId": "scope_platform", "action": "delete", "resourceType": "data", "resourcePattern": "*", "key": "data:delete:*"},
+    {"id": "perm_admin_tenant", "scopeId": "scope_platform", "action": "admin", "resourceType": "tenant", "resourcePattern": "*", "key": "tenant:admin:*"}
+  ]'
 ```
 
 ### Tenant-specific Permission Overrides
