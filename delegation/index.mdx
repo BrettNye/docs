@@ -1,0 +1,204 @@
+---
+title: 'Delegation'
+description: 'Acting on behalf of other subjects'
+icon: 'handshake'
+---
+
+## What is Delegation?
+
+**Delegation** allows one subject (the **actor**) to perform actions on behalf of another subject (the **principal**). This is essential for AI agents, service accounts, and automated workflows that need to act within a user's permission context.
+
+<CardGroup cols={2}>
+  <Card title="On Behalf Of" icon="user-group" href="/delegation/on-behalf-of">
+    How actor/principal evaluation works
+  </Card>
+  <Card title="Agent Delegation" icon="robot" href="/delegation/agent-delegation">
+    AI agents acting for users
+  </Card>
+</CardGroup>
+
+## Why Delegation Matters
+
+As AI agents become integral to workflows, you need to answer:
+
+- **What can this agent access?** — Agents need scoped permissions
+- **Whose permissions apply?** — The agent's, the user's, or both?
+- **How do I audit agent actions?** — Track both actor and principal
+- **How do I limit agent scope?** — Agents shouldn't exceed user permissions
+
+Bedrock's delegation model addresses all of these.
+
+## The Delegation Model
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Evaluation Input                      │
+├─────────────────────────────────────────────────────────┤
+│  actor: { subjectId: "agent_123", subjectType: "agent" }│
+│  onBehalfOf: { subjectId: "user_jane", subjectType: "user" } │
+│  scopeId: "scope_engineering"                            │
+│  action: "read"                                          │
+│  resource: { resourceType: "document" }                  │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Evaluation Logic                       │
+├─────────────────────────────────────────────────────────┤
+│  1. Does the ACTOR have the permission?                  │
+│  2. Does the PRINCIPAL have the permission?              │
+│  3. Both must pass for delegation to succeed             │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                      Decision                            │
+├─────────────────────────────────────────────────────────┤
+│  allowed: true                                           │
+│  usedDelegation: true                                    │
+│  evaluatedActor: { subjectId: "agent_123", ... }        │
+│  evaluatedOnBehalfOf: { subjectId: "user_jane", ... }   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Basic Example
+
+```typescript
+// Agent acting on behalf of a user
+const decision = await bedrock.evaluate({
+  actor: { 
+    subjectId: "subject_coding_agent", 
+    subjectType: "agent" 
+  },
+  onBehalfOf: { 
+    subjectId: "subject_jane", 
+    subjectType: "user" 
+  },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceType: "document", resourcePattern: "*" }
+});
+
+if (decision.allowed) {
+  console.log("Agent can read documents on behalf of Jane");
+  console.log("Used delegation:", decision.usedDelegation);
+}
+```
+
+## Key Concepts
+
+### Actor
+
+The entity actually performing the action. This is typically:
+- An AI agent
+- A service account
+- An automated workflow
+- An API integration
+
+### Principal (onBehalfOf)
+
+The entity whose permissions should also be checked. This is typically:
+- The human user who initiated the request
+- The user who owns the session
+- The user who authorized the agent
+
+### Dual Authorization
+
+When `onBehalfOf` is provided, **both** the actor and principal must have the permission:
+
+| Actor Has Permission | Principal Has Permission | Result |
+|---------------------|-------------------------|--------|
+| ✅ Yes | ✅ Yes | ✅ Allowed |
+| ✅ Yes | ❌ No | ❌ Denied |
+| ❌ No | ✅ Yes | ❌ Denied |
+| ❌ No | ❌ No | ❌ Denied |
+
+This ensures agents can never exceed the permissions of the user they're acting for.
+
+## Use Cases
+
+### AI Coding Assistant
+
+```typescript
+// User asks AI to read a file
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_copilot", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_developer", subjectType: "user" },
+  scopeId: "scope_repo",
+  action: "read",
+  resource: { resourceType: "file", resourcePattern: "*" }
+});
+```
+
+### Automated Workflow
+
+```typescript
+// Scheduled job running as a user
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_scheduler", subjectType: "service" },
+  onBehalfOf: { subjectId: "subject_admin", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "export",
+  resource: { resourceType: "report", resourcePattern: "*" }
+});
+```
+
+### API Integration
+
+```typescript
+// Third-party app accessing user data
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_slack_integration", subjectType: "service" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_workspace",
+  action: "read",
+  resource: { resourceType: "message", resourcePattern: "*" }
+});
+```
+
+## Audit Trail
+
+The decision includes both actor and principal for auditing:
+
+```typescript
+const decision = await bedrock.evaluate({...});
+
+// Log for audit
+console.log({
+  action: "read",
+  resource: "document",
+  actor: decision.evaluatedActor,      // The agent
+  principal: decision.evaluatedOnBehalfOf, // The user
+  allowed: decision.allowed,
+  delegationUsed: decision.usedDelegation,
+  delegationId: decision.delegationId,
+  timestamp: new Date()
+});
+```
+
+## Without Delegation
+
+If `onBehalfOf` is not provided, only the actor's permissions are checked:
+
+```typescript
+// Direct agent action (no delegation)
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceType: "public-data" }
+});
+
+// decision.usedDelegation = false
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="On Behalf Of" icon="arrow-right" href="/delegation/on-behalf-of">
+    Deep dive into actor/principal evaluation
+  </Card>
+  <Card title="Agent Delegation" icon="robot" href="/delegation/agent-delegation">
+    Patterns for AI agent delegation
+  </Card>
+</CardGroup>

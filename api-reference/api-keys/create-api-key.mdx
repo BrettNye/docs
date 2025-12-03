@@ -1,0 +1,85 @@
+---
+title: 'Create API Key'
+api: 'POST /api-keys'
+description: 'Create a new API key'
+---
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Display name for the API key (e.g., "CI Pipeline", "Backup Service")
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description of what this key is used for
+</ParamField>
+
+<ParamField body="tenantId" type="string">
+  Restrict key to a specific tenant
+</ParamField>
+
+<ParamField body="environmentId" type="string">
+  Restrict key to a specific environment
+</ParamField>
+
+<ParamField body="expiresAt" type="string">
+  ISO 8601 expiration date. If omitted, key does not expire.
+</ParamField>
+
+<ParamField body="intendedUse" type="string">
+  Intended use case (e.g., "ci-cd", "backup", "reporting")
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Custom metadata
+</ParamField>
+
+## Response
+
+Returns the created API key object **including the secret key**. 
+
+<Warning>
+  The secret key is only returned once at creation time. Store it securely—it cannot be retrieved later.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/api-keys' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "CI Pipeline",
+    "description": "Used for automated deployments",
+    "tenantId": "tenant_acme",
+    "environmentId": "environment_prod",
+    "expiresAt": "2025-01-15T10:30:00Z",
+    "intendedUse": "ci-cd"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "apk_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "subjectId": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+  "tenantId": "tenant_acme",
+  "environmentId": "environment_prod",
+  "name": "CI Pipeline",
+  "description": "Used for automated deployments",
+  "prefix": "qs_live_xxxx",
+  "lastFour": "a1b2",
+  "secretKey": "qs_live_xxxx1234567890abcdefghijklmnopqrstuvwxyz",
+  "hashAlgo": "argon2id",
+  "createdBySubjectId": "subject_jane",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "expiresAt": "2025-01-15T10:30:00Z",
+  "status": "active",
+  "intendedUse": "ci-cd"
+}
+```
+</ResponseExample>
+
+<Note>
+  Creating an API key also creates an associated Bedrock subject with type `service`. This subject can be used for permission checks and role assignments.
+</Note>

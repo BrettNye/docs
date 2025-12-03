@@ -1,0 +1,312 @@
+---
+title: 'Tag Groups'
+description: 'Organize related tags and define constraints'
+icon: 'layer-group'
+---
+
+## What is a Tag Group?
+
+A **tag group** is a container for related tags. Instead of having a flat list of all tags, you organize them into logical groups like "Departments", "Sensitivity Levels", or "Project Types". Tag groups also define constraints like how many tags from the group can be applied to a single target.
+
+## Tag Group Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `scopeId` | `string` | Scope where this group is defined |
+| `name` | `string` | Human-readable name |
+| `key` | `string` | Machine-readable key |
+| `description` | `string` | What this group is for |
+| `maxAppliedPerTarget` | `number \| null` | Max tags from this group per target (`null` = unlimited) |
+| `origin` | `TagGroupOriginEnum` | How this group was created |
+| `isLocked` | `boolean` | Whether the group can be modified |
+| `createdBy` | `string` | Subject who created it |
+| `createdAt` | `Date` | Creation timestamp |
+
+## Creating Tag Groups
+
+### With Inline Tags (Recommended)
+
+Create a tag group and its tags in a single request:
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Company departments for access control",
+    "tags": [
+      {"identifier": "engineering", "label": "Engineering"},
+      {"identifier": "sales", "label": "Sales"},
+      {"identifier": "finance", "label": "Finance"},
+      {"identifier": "hr", "label": "Human Resources"}
+    ]
+  }'
+```
+
+<Note>
+  Inline tags automatically inherit `scopeId` and `tagGroupId` from the parent group. You only need to provide `identifier` and `label`.
+</Note>
+
+### Basic (Without Tags)
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Company departments for access control"
+  }'
+```
+
+### With Constraints
+
+```bash
+# Only one sensitivity level allowed per resource
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Sensitivity Level",
+    "key": "sensitivity",
+    "description": "Data classification level",
+    "maxAppliedPerTarget": 1,
+    "tags": [
+      {"identifier": "public", "label": "Public"},
+      {"identifier": "internal", "label": "Internal Only"},
+      {"identifier": "confidential", "label": "Confidential"},
+      {"identifier": "restricted", "label": "Restricted"}
+    ]
+  }'
+```
+
+## maxAppliedPerTarget
+
+This constraint controls how many tags from the group can be applied to a single target:
+
+| Value | Meaning | Use Case |
+|-------|---------|----------|
+| `null` | Unlimited | Departments (user can be in multiple) |
+| `1` | Exactly one | Sensitivity level, status |
+| `3` | Up to three | Top 3 skills, primary categories |
+
+```bash
+# Unlimited: A document can belong to multiple departments
+{"name": "Departments", "maxAppliedPerTarget": null}
+
+# Single: A document has exactly one sensitivity level
+{"name": "Sensitivity", "maxAppliedPerTarget": 1}
+
+# Limited: A user can have up to 3 skill tags
+{"name": "Skills", "maxAppliedPerTarget": 3}
+```
+
+## Tag Group Origin
+
+The `origin` field tracks how the group was created:
+
+| Origin | Description |
+|--------|-------------|
+| `system` | Created by Bedrock (built-in groups) |
+| `user` | Created by a user |
+| `integration` | Created by an external integration |
+
+## Locked Tag Groups
+
+Locked groups cannot be modified or deleted:
+
+```bash
+# Create a locked group (typically for system-critical tags)
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Compliance Zones",
+    "key": "compliance",
+    "isLocked": true
+  }'
+```
+
+<Warning>
+  Locked groups require special permissions to unlock. Use this for critical classification schemes.
+</Warning>
+
+## Common Tag Group Patterns
+
+### Organizational Structure
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups/batch' \
+  -d '[
+    {
+      "scopeId": "scope_project",
+      "name": "Departments",
+      "key": "departments",
+      "description": "Organization departments",
+      "tags": [
+        {"identifier": "engineering", "label": "Engineering"},
+        {"identifier": "sales", "label": "Sales"},
+        {"identifier": "finance", "label": "Finance"}
+      ]
+    },
+    {
+      "scopeId": "scope_project",
+      "name": "Teams",
+      "key": "teams",
+      "description": "Cross-functional teams",
+      "tags": [
+        {"identifier": "backend", "label": "Backend"},
+        {"identifier": "frontend", "label": "Frontend"},
+        {"identifier": "platform", "label": "Platform"}
+      ]
+    }
+  ]'
+```
+
+### Data Classification
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups/batch' \
+  -d '[
+    {
+      "scopeId": "scope_project",
+      "name": "Sensitivity",
+      "key": "sensitivity",
+      "maxAppliedPerTarget": 1,
+      "tags": [
+        {"identifier": "public", "label": "Public"},
+        {"identifier": "internal", "label": "Internal"},
+        {"identifier": "confidential", "label": "Confidential"},
+        {"identifier": "restricted", "label": "Restricted"}
+      ]
+    },
+    {
+      "scopeId": "scope_project",
+      "name": "Compliance",
+      "key": "compliance",
+      "description": "Regulatory compliance requirements",
+      "tags": [
+        {"identifier": "hipaa", "label": "HIPAA"},
+        {"identifier": "gdpr", "label": "GDPR"},
+        {"identifier": "sox", "label": "SOX"}
+      ]
+    }
+  ]'
+```
+
+### Project Management
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups/batch' \
+  -d '[
+    {
+      "scopeId": "scope_project",
+      "name": "Priority",
+      "key": "priority",
+      "maxAppliedPerTarget": 1,
+      "tags": [
+        {"identifier": "critical", "label": "Critical"},
+        {"identifier": "high", "label": "High"},
+        {"identifier": "medium", "label": "Medium"},
+        {"identifier": "low", "label": "Low"}
+      ]
+    },
+    {
+      "scopeId": "scope_project",
+      "name": "Status",
+      "key": "status",
+      "maxAppliedPerTarget": 1,
+      "tags": [
+        {"identifier": "open", "label": "Open"},
+        {"identifier": "in_progress", "label": "In Progress"},
+        {"identifier": "review", "label": "In Review"},
+        {"identifier": "done", "label": "Done"}
+      ]
+    }
+  ]'
+```
+
+### Construction / Field Service
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups/batch' \
+  -d '[
+    {
+      "scopeId": "scope_project",
+      "name": "Labor Classes",
+      "key": "labor_classes",
+      "description": "Worker certifications and specialties",
+      "tags": [
+        {"identifier": "electrician", "label": "Electrician"},
+        {"identifier": "plumber", "label": "Plumber"},
+        {"identifier": "carpenter", "label": "Carpenter"},
+        {"identifier": "foreman", "label": "Foreman"}
+      ]
+    },
+    {
+      "scopeId": "scope_project",
+      "name": "Safety Certifications",
+      "key": "safety_certs",
+      "tags": [
+        {"identifier": "osha_10", "label": "OSHA 10"},
+        {"identifier": "osha_30", "label": "OSHA 30"},
+        {"identifier": "first_aid", "label": "First Aid"}
+      ]
+    }
+  ]'
+```
+
+## Adding Tags to Existing Groups
+
+If you created a group without inline tags, you can add tags later:
+
+```bash
+# Add tags to an existing Departments group
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "engineering", "label": "Engineering"},
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "sales", "label": "Sales"},
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "finance", "label": "Finance"}
+  ]'
+```
+
+<Tip>
+  For new tag groups, prefer using inline tags in the create request. Use separate tag creation only when adding tags to existing groups.
+</Tip>
+
+## Querying Tag Groups
+
+```bash
+# Get all tag groups in a scope
+curl -X GET 'https://api.example.com/tag-groups?scopeId=scope_project'
+
+# Get a specific tag group
+curl -X GET 'https://api.example.com/tag-groups/tg_departments'
+
+# Get tags in a group
+curl -X GET 'https://api.example.com/tags?tagGroupId=tg_departments'
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Tag Group" icon="plus" href="/api-reference/tags/create-tag-group">
+    Create a new tag group
+  </Card>
+  <Card title="Get Tag Groups" icon="list" href="/api-reference/tags/get-tag-groups">
+    List tag groups
+  </Card>
+  <Card title="Update Tag Group" icon="pen" href="/api-reference/tags/update-tag-group">
+    Update a tag group
+  </Card>
+  <Card title="Delete Tag Group" icon="trash" href="/api-reference/tags/delete-tag-group">
+    Delete a tag group
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Tag Bindings" icon="arrow-right" href="/tags/tag-bindings">
+  Learn how to control which models can use which tag groups
+</Card>

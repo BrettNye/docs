@@ -1,0 +1,205 @@
+---
+title: 'Scope Types'
+description: 'Templates that define how scopes behave and inherit permissions'
+icon: 'layer-group'
+---
+
+## What is a Scope Type?
+
+A **scope type** is a template that defines the behavior of scopes. Think of scope types as "classes" and scopes as "instances"—every scope must have a type that determines how it handles permission inheritance.
+
+## Scope Type Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `name` | `string` | Human-readable name (e.g., "Organization", "Team", "Project") |
+| `config.permissionMode` | `PermissionModeEnum` | How permissions are inherited: `DEFINE` or `MERGE` |
+
+## Permission Modes
+
+The `permissionMode` setting controls how a scope type handles inherited permissions:
+
+### DEFINE Mode
+
+Scopes of this type **define their own permissions** and do not inherit from parents. Use this for top-level organizational boundaries.
+
+```bash
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{
+    "id": "scope_type_org",
+    "name": "Organization",
+    "config": {"permissionMode": "define"}
+  }'
+```
+
+**Use cases:**
+- Tenant roots in multi-tenant systems
+- Isolated business units
+- Compliance boundaries
+
+### MERGE Mode
+
+Scopes of this type **inherit and merge** permissions from parent scopes. Child scopes can add additional permissions but start with everything from their parents.
+
+```bash
+curl -X POST 'https://api.example.com/scope-types' \
+  -d '{
+    "id": "scope_type_team",
+    "name": "Team",
+    "config": {"permissionMode": "merge"}
+  }'
+```
+
+**Use cases:**
+- Teams within an organization
+- Projects within a workspace
+- Environments within a project
+
+## Scope Type Hierarchy
+
+Scope types form their own hierarchy that defines **which types can contain which**. This is separate from the scope hierarchy itself.
+
+```
+Organization (DEFINE)
+    │
+    └── can contain ──▶ Team (MERGE)
+                            │
+                            └── can contain ──▶ Project (MERGE)
+                                                    │
+                                                    └── can contain ──▶ Environment (MERGE)
+```
+
+### Creating Scope Type Hierarchy
+
+```bash
+# Define that Teams can be children of Organizations
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "parentTypeId": "scope_type_org",
+    "childTypeId": "scope_type_team"
+  }'
+
+# Define that Projects can be children of Teams
+curl -X POST 'https://api.example.com/scope-type-hierarchy' \
+  -d '{
+    "parentTypeId": "scope_type_team",
+    "childTypeId": "scope_type_project"
+  }'
+```
+
+<Note>
+  The scope type hierarchy enforces structural rules. You cannot create a scope hierarchy edge that violates the type hierarchy.
+</Note>
+
+## Built-in Scope Types (Bedrock Cloud)
+
+Bedrock Cloud provides these default scope types:
+
+| Type | Permission Mode | Purpose |
+|------|-----------------|---------|
+| **Tenant** | `DEFINE` | Top-level customer boundary |
+| **Workspace** | `MERGE` | Logical grouping within a tenant |
+| **Project** | `MERGE` | Application or service |
+| **Environment** | `MERGE` | Deployment stage (prod, staging, dev) |
+
+```
+Tenant (DEFINE)
+└── Workspace (MERGE)
+    └── Project (MERGE)
+        └── Environment (MERGE)
+```
+
+## Custom Scope Types
+
+You can create custom scope types to match your domain:
+
+```bash
+# Create custom scope types for a construction company
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -d '[
+    {"id": "type_company", "name": "Company", "config": {"permissionMode": "define"}},
+    {"id": "type_division", "name": "Division", "config": {"permissionMode": "merge"}},
+    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
+    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
+  ]'
+
+# Define the hierarchy
+curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
+  -d '[
+    {"parentTypeId": "type_company", "childTypeId": "type_division"},
+    {"parentTypeId": "type_division", "childTypeId": "type_jobsite"},
+    {"parentTypeId": "type_jobsite", "childTypeId": "type_crew"}
+  ]'
+```
+
+## When to Use DEFINE vs MERGE
+
+| Scenario | Recommended Mode | Reason |
+|----------|------------------|--------|
+| Tenant root | `DEFINE` | Complete isolation between tenants |
+| Workspace within tenant | `MERGE` | Inherit tenant-level settings |
+| Project within workspace | `MERGE` | Inherit workspace permissions |
+| Environment within project | `MERGE` | Inherit project permissions, override as needed |
+| Custom domain scopes (job sites, crews) | `MERGE` | Inherit from parent, add specific permissions |
+| Compliance boundary | `DEFINE` | Prevent permission leakage |
+
+## Example: Custom Scope Types Within a Project
+
+Projects can define custom scope types for their domain. For example, a construction management app:
+
+```bash
+# 1. Create custom scope types (these extend below Environment)
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -d '[
+    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
+    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
+  ]'
+
+# 2. Define type hierarchy (Job Sites under Environments, Crews under Job Sites)
+curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
+  -d '[
+    {"parentTypeId": "type_environment", "childTypeId": "type_jobsite"},
+    {"parentTypeId": "type_jobsite", "childTypeId": "type_crew"}
+  ]'
+
+# 3. Create actual scopes within a project's environment
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"id": "scope_downtown", "typeId": "type_jobsite", "name": "Downtown Tower"},
+    {"id": "scope_electrical", "typeId": "type_crew", "name": "Electrical Team"}
+  ]'
+
+# 4. Link to the environment
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
+  -d '[
+    {"parentScopeId": "scope_env_production", "childScopeId": "scope_downtown"},
+    {"parentScopeId": "scope_downtown", "childScopeId": "scope_electrical"}
+  ]'
+```
+
+This creates:
+```
+Project
+└── Environment (Production)
+    └── Job Site (Downtown Tower)
+        └── Crew (Electrical Team)
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Scope Type" icon="plus" href="/api-reference/scope-types/create-scope-type">
+    Create a new scope type
+  </Card>
+  <Card title="Create Type Hierarchy" icon="link" href="/api-reference/scope-type-hierarchy/create-edge">
+    Define parent-child type relationships
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Subjects" icon="arrow-right" href="/concepts/subjects">
+  Learn about the entities that receive permissions
+</Card>

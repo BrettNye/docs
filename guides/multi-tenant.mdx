@@ -6,77 +6,89 @@ icon: 'building'
 
 ## Overview
 
-Multi-tenant applications need strong isolation between tenants while sharing common infrastructure. Bedrock's hierarchical scope model naturally supports multi-tenancy, allowing you to define tenant-specific roles, permissions, and access controls.
+Multi-tenant applications need strong isolation between tenants while sharing common infrastructure. Bedrock Cloud provides built-in multi-tenancy with complete isolation between customers.
 
-## Multi-tenant Architecture
+## Bedrock Cloud Multi-tenant Architecture
 
 ```
-Platform (global scope)
-├── Tenant A (tenant scope)
-│   ├── Team A1
-│   └── Team A2
-├── Tenant B (tenant scope)
-│   ├── Team B1
-│   └── Team B2
-└── Tenant C (tenant scope)
-    └── Team C1
+Tenant A (customer boundary)
+└── Workspace
+    └── Project (authorization configured here)
+        ├── Production
+        └── Staging
+
+Tenant B (completely isolated)
+└── Workspace
+    └── Project
+        ├── Production
+        └── Staging
 ```
+
+<Note>
+  Each tenant is completely isolated. Users, roles, and permissions in one tenant cannot access another tenant's resources.
+</Note>
 
 ## Setting Up Multi-tenancy
 
-### 1. Define Scope Types
+### 1. Create Tenants via Management API
 
 ```bash
-# Create all scope types at once
-curl -X POST 'https://api.example.com/scope-types/batch' \
-  -H 'Content-Type: application/json' \
-  -d '[
-    {"id": "type_platform", "name": "Platform", "config": {"permissionMode": "define"}},
-    {"id": "type_tenant", "name": "Tenant", "config": {"permissionMode": "inherit"}},
-    {"id": "type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
-  ]'
+# Create Acme tenant
+curl -X POST 'https://api.example.com/tenants' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -d '{
+    "name": "Acme Corp",
+    "slug": "acme-corp",
+    "kind": "standard",
+    "planKey": "pro",
+    "maxUsers": 50
+  }'
 
-# Define hierarchy: Platform → Tenant → Team
-curl -X POST 'https://api.example.com/scope-type-hierarchy' \
-  -d '{"parentTypeId": "type_platform", "childTypeId": "type_tenant"}'
-
-curl -X POST 'https://api.example.com/scope-type-hierarchy' \
-  -d '{"parentTypeId": "type_tenant", "childTypeId": "type_team"}'
+# Create Globex tenant
+curl -X POST 'https://api.example.com/tenants' \
+  -d '{
+    "name": "Globex Inc",
+    "slug": "globex-inc",
+    "kind": "standard",
+    "planKey": "pro",
+    "maxUsers": 100
+  }'
 ```
 
-### 2. Create Platform and Tenants
+### 2. Build Tenant Structure
 
 ```bash
-# Create platform and all tenant scopes at once
-curl -X POST 'https://api.example.com/scopes/batch' \
-  -H 'Content-Type: application/json' \
-  -d '[
-    {"id": "scope_platform", "name": "My SaaS Platform", "typeId": "type_platform"},
-    {"id": "scope_acme", "name": "Acme Corp", "typeId": "type_tenant", "externalId": "tenant-acme"},
-    {"id": "scope_globex", "name": "Globex Inc", "typeId": "type_tenant", "externalId": "tenant-globex"}
-  ]'
+# Create workspace for Acme
+curl -X POST 'https://api.example.com/workspaces' \
+  -d '{"tenantId": "tenant_acme", "name": "Main"}'
 
-# Link tenants to platform
-curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
-  -H 'Content-Type: application/json' \
-  -d '[
-    {"parentScopeId": "scope_platform", "childScopeId": "scope_acme"},
-    {"parentScopeId": "scope_platform", "childScopeId": "scope_globex"}
-  ]'
+# Create project
+curl -X POST 'https://api.example.com/projects' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "workspaceId": "workspace_main",
+    "name": "CRM Application"
+  }'
+
+# Create environments
+curl -X POST 'https://api.example.com/environments' \
+  -d '{"tenantId": "tenant_acme", "projectId": "project_crm", "name": "Production"}'
+
+curl -X POST 'https://api.example.com/environments' \
+  -d '{"tenantId": "tenant_acme", "projectId": "project_crm", "name": "Staging"}'
 ```
 
-### 3. Define Platform-wide and Tenant-specific Roles
+### 3. Define Project-Level Roles
+
+Roles and permissions are defined at the **Project** level:
 
 ```bash
-# Create all roles at once
+# Create roles for the CRM project
 curl -X POST 'https://api.example.com/roles/batch' \
-  -H 'Content-Type: application/json' \
   -d '[
-    {"id": "role_platform_admin", "name": "Platform Admin", "description": "Full platform access", "scopeId": "scope_platform"},
-    {"id": "role_support_agent", "name": "Support Agent", "description": "Customer support access", "scopeId": "scope_platform"},
-    {"id": "role_tenant_admin", "name": "Tenant Admin", "description": "Full tenant access", "scopeId": "scope_platform"},
-    {"id": "role_tenant_member", "name": "Tenant Member", "description": "Basic tenant access", "scopeId": "scope_platform"},
-    {"id": "role_acme_auditor", "name": "Acme Auditor", "description": "Acme-specific audit role", "scopeId": "scope_acme"}
+    {"name": "Admin", "description": "Full project access", "scopeId": "scope_project_crm"},
+    {"name": "Sales Rep", "description": "Sales data access", "scopeId": "scope_project_crm"},
+    {"name": "Viewer", "description": "Read only", "scopeId": "scope_project_crm"}
   ]'
 ```
 
@@ -85,170 +97,172 @@ curl -X POST 'https://api.example.com/roles/batch' \
 ### Users Can Only Access Their Tenant
 
 ```bash
-# Create Acme user with membership in one request
-curl -X POST 'https://api.example.com/subjects' \
-  -H 'Content-Type: application/json' \
+# Create user via Management API
+curl -X POST 'https://api.example.com/users' \
   -d '{
-    "subjectType": "user",
-    "externalId": "acme-user-1",
-    "displayName": "Acme User",
-    "memberships": [
-      {"scopeId": "scope_acme", "roleIds": ["role_tenant_member"]}
-    ]
+    "kindeId": "kp_acme_user_1",
+    "email": "user@acme.com",
+    "firstName": "Acme",
+    "lastName": "User",
+    "defaultTenantId": "tenant_acme"
   }'
+
+# Add to project with a role
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "subject_acme_user", "scopeId": "scope_project_crm"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_sales_rep", "membershipId": "membership_acme_user_crm"}'
 
 # This user has NO access to Globex tenant
-# They can only access scope_acme and its children
+# They can only access Acme's CRM project and its environments
 ```
 
-### Cross-tenant Access (Support Agents)
+### Verifying Tenant Isolation
 
-```bash
-# Support agent with platform-level access
-curl -X POST 'https://api.example.com/subjects' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "subjectType": "user",
-    "externalId": "support-agent-1",
-    "displayName": "Support Agent",
-    "memberships": [
-      {"scopeId": "scope_platform", "roleIds": ["role_support_agent"]}
-    ]
-  }'
+```typescript
+// Acme user tries to access Globex project
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_acme_user", subjectType: "user" },
+  scopeId: "scope_project_globex_crm",  // Different tenant!
+  action: "read",
+  resource: { resourceType: "customer" }
+});
 
-# Support agent can now access all tenants (based on role permissions)
+// Result: DENIED
+// User has no membership in any Globex scope
 ```
 
 ## Agents in Multi-tenant Environments
 
 ### Tenant-specific Agents
 
-Each tenant can have their own AI agents:
+Each tenant can have their own AI agents scoped to their projects:
 
 ```bash
-# Acme's coding assistant - scoped to Acme only
+# Create Acme's sales assistant agent
 curl -X POST 'https://api.example.com/subjects' \
-  -H 'Content-Type: application/json' \
   -d '{
     "subjectType": "agent",
-    "externalId": "acme-coding-assistant",
-    "displayName": "Acme Coding Assistant",
-    "meta": {"tenant": "acme", "purpose": "code-review"},
-    "memberships": [
-      {"scopeId": "scope_acme", "roleIds": ["role_tenant_member"]}
-    ]
+    "externalId": "acme-sales-assistant",
+    "displayName": "Acme Sales Assistant",
+    "meta": {"model": "claude-3", "purpose": "sales-support"}
   }'
 
-# This agent can ONLY access Acme's scope
+# Add to Acme's CRM project only
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "subject_acme_agent", "scopeId": "scope_project_crm"}'
+
+# Assign a restricted role
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_viewer", "membershipId": "membership_agent_crm"}'
+
+# This agent can ONLY access Acme's CRM project
 ```
 
-### Platform-wide Agents
+### Agent Delegation
 
-Some agents may need cross-tenant access:
+Agents should act on behalf of users for proper access control:
 
-```bash
-# Platform analytics agent with read-only access
-curl -X POST 'https://api.example.com/subjects' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "subjectType": "agent",
-    "externalId": "platform-analytics-agent",
-    "displayName": "Platform Analytics Agent",
-    "meta": {"purpose": "cross-tenant-analytics"},
-    "memberships": [
-      {"scopeId": "scope_platform", "roleIds": ["role_analytics_reader"]}
-    ]
-  }'
-```
+```typescript
+// Agent acting on behalf of a sales rep
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_acme_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_sales_rep", subjectType: "user" },
+  scopeId: "scope_project_crm",
+  action: "read",
+  resource: { resourceType: "customer" }
+});
 
-### Restricting Platform Agents in Specific Tenants
-
-Some tenants may want to opt out of platform-wide agents:
-
-```bash
-# Globex doesn't want platform agents accessing their data
-curl -X POST 'https://api.example.com/scope-overrides/roles' \
-  -d '{
-    "childScopeId": "scope_globex",
-    "roleId": "role_analytics_reader",
-    "state": "disabled"
-  }'
+// Both agent AND user must have the permission
 ```
 
 ## Permission Patterns
 
-### Tenant-isolated Permissions
+### Project-Level Permissions
 
 ```bash
-# Create permissions at platform level (inherited by all tenants)
+# Create permissions at project level
 curl -X POST 'https://api.example.com/permissions/batch' \
-  -H 'Content-Type: application/json' \
   -d '[
-    {"id": "perm_read_data", "scopeId": "scope_platform", "action": "read", "resourceType": "data", "resourcePattern": "*", "key": "data:read:*"},
-    {"id": "perm_write_data", "scopeId": "scope_platform", "action": "write", "resourceType": "data", "resourcePattern": "*", "key": "data:write:*"},
-    {"id": "perm_delete_data", "scopeId": "scope_platform", "action": "delete", "resourceType": "data", "resourcePattern": "*", "key": "data:delete:*"},
-    {"id": "perm_admin_tenant", "scopeId": "scope_platform", "action": "admin", "resourceType": "tenant", "resourcePattern": "*", "key": "tenant:admin:*"}
+    {"scopeId": "scope_project_crm", "action": "read", "resourceType": "customer", "resourcePattern": "*", "key": "customer:read:*"},
+    {"scopeId": "scope_project_crm", "action": "write", "resourceType": "customer", "resourcePattern": "*", "key": "customer:write:*"},
+    {"scopeId": "scope_project_crm", "action": "delete", "resourceType": "customer", "resourcePattern": "*", "key": "customer:delete:*"},
+    {"scopeId": "scope_project_crm", "action": "export", "resourceType": "report", "resourcePattern": "*", "key": "report:export:*"}
   ]'
 ```
 
-### Tenant-specific Permission Overrides
+### Environment-Specific Overrides
 
 ```bash
-# Acme wants to disable data deletion
+# Disable delete in production environment
 curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
-    "childScopeId": "scope_acme",
-    "permissionId": "perm_delete_data",
+    "childScopeId": "scope_env_production",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+
+# Only Admins can export in production
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_env_production",
+    "roleId": "role_sales_rep",
+    "permissionId": "perm_export",
     "state": "disabled"
   }'
 ```
 
 ## Querying Tenant Access
 
-When a request comes in, determine which tenant the user/agent belongs to:
+Determine which projects a user has access to:
 
 ```typescript
-async function getTenantAccess(subjectId: string, tenantId: string) {
-  // Get memberships for this subject in the tenant scope
+async function getUserProjects(subjectId: string, tenantId: string) {
+  // Get all memberships for this subject
   const memberships = await fetch(
-    `/memberships?subjectId=${subjectId}&scopeId=${tenantId}`
+    `/memberships?subjectId=${subjectId}`
   );
   
-  if (memberships.length === 0) {
-    // Check if they have platform-level access
-    const platformMemberships = await fetch(
-      `/memberships?subjectId=${subjectId}&scopeId=scope_platform`
-    );
-    
-    if (platformMemberships.length === 0) {
-      return { hasAccess: false };
-    }
-    
-    // They have platform access - check if it applies to this tenant
-    return { hasAccess: true, level: 'platform' };
-  }
+  // Filter to projects within this tenant
+  const projectMemberships = memberships.filter(m => 
+    m.scopeId.startsWith('scope_project_') &&
+    m.tenantId === tenantId
+  );
   
-  return { hasAccess: true, level: 'tenant' };
+  return projectMemberships.map(m => m.scopeId);
+}
+
+// Check access to a specific project
+async function canAccessProject(subjectId: string, projectScopeId: string) {
+  const decision = await bedrock.evaluate({
+    actor: { subjectId, subjectType: "user" },
+    scopeId: projectScopeId,
+    action: "read",
+    resource: { resourceType: "*" }
+  });
+  
+  return decision.allowed;
 }
 ```
 
 ## Best Practices
 
 <AccordionGroup>
-  <Accordion title="Use external IDs for tenant mapping">
-    Store your application's tenant ID as the scope's `externalId` for easy lookup.
+  <Accordion title="Define authorization at the Project level">
+    Roles and permissions should be defined at the project level, not the tenant level. This allows each project to have its own authorization model.
   </Accordion>
-  <Accordion title="Define common roles at platform level">
-    Roles like "Tenant Admin" and "Tenant Member" should be defined at the platform level so all tenants inherit them.
+  <Accordion title="Use environment overrides for production">
+    Apply overrides to production environments to restrict dangerous operations.
   </Accordion>
-  <Accordion title="Allow tenant-specific customization">
-    Let tenants create their own roles and permissions within their scope.
+  <Accordion title="Scope agents to specific projects">
+    Don't give agents tenant-wide access. Scope them to the specific projects they need.
   </Accordion>
-  <Accordion title="Audit cross-tenant access">
-    Log all access by platform-level users/agents to tenant data.
+  <Accordion title="Use delegation for agent actions">
+    When agents act on behalf of users, use the `onBehalfOf` field to ensure proper access control.
   </Accordion>
-  <Accordion title="Respect tenant opt-outs">
-    Use scope overrides to respect tenant preferences about platform-wide features.
+  <Accordion title="Map external IDs">
+    Use `externalId` on tenants and users to map to your billing/CRM systems.
   </Accordion>
 </AccordionGroup>
 

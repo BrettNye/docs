@@ -1,12 +1,12 @@
 ---
 title: 'Create Scopes (Batch)'
 api: 'POST /scopes/batch'
-description: 'Create multiple scopes in a single request'
+description: 'Create multiple scopes with inline memberships in a single request'
 ---
 
 ## Overview
 
-Batch creation allows you to create multiple scopes in a single API call. You can provide client IDs for in-batch references when setting up scope hierarchies.
+Batch creation allows you to create multiple scopes in a single API call. You can provide client IDs for in-batch references, set up parent relationships, and add memberships with role assignments.
 
 <Info>
   **ID Format**: All IDs use a namespaced UUIDv7 format: `scope_{uuidv7}`. You can optionally provide your own IDs for in-batch references.
@@ -36,9 +36,23 @@ Array of scope objects:
   Optional metadata to associate with the scope
 </ParamField>
 
+<ParamField body="[].parentScopeId" type="string">
+  Optional parent scope ID. Automatically creates a scope hierarchy edge.
+</ParamField>
+
+<ParamField body="[].memberships" type="array">
+  Optional array of inline memberships. Each membership has:
+  - `subjectId` (required): The subject to add to this scope
+  - `roleIds` (optional): Array of role IDs to assign
+</ParamField>
+
 ## Response
 
 Returns an array of created scope objects.
+
+<Note>
+  Each scope can include `parentScopeId` and `memberships` to set up the complete structure in one request.
+</Note>
 
 <RequestExample>
 ```bash cURL
@@ -47,36 +61,35 @@ curl -X POST 'https://api.example.com/scopes/batch' \
   -H 'Content-Type: application/json' \
   -d '[
     {
-      "id": "scope_acme",
-      "typeId": "scope_type_org",
-      "name": "Acme Corp",
-      "externalId": "acme-corp"
-    },
-    {
       "id": "scope_engineering",
-      "typeId": "scope_type_team",
+      "typeId": "type_department",
       "name": "Engineering",
-      "externalId": "engineering"
+      "parentScopeId": "scope_env_production",
+      "memberships": [
+        {"subjectId": "subject_jane", "roleIds": ["role_admin"]}
+      ]
     },
     {
       "id": "scope_backend",
-      "typeId": "scope_type_project",
-      "name": "Backend API",
-      "externalId": "backend-api"
+      "typeId": "type_team",
+      "name": "Backend Team",
+      "parentScopeId": "scope_engineering",
+      "memberships": [
+        {"subjectId": "subject_jane", "roleIds": ["role_lead"]},
+        {"subjectId": "subject_bob", "roleIds": ["role_developer"]},
+        {"subjectId": "subject_alice", "roleIds": ["role_developer"]}
+      ]
+    },
+    {
+      "id": "scope_frontend",
+      "typeId": "type_team",
+      "name": "Frontend Team",
+      "parentScopeId": "scope_engineering",
+      "memberships": [
+        {"subjectId": "subject_charlie", "roleIds": ["role_lead"]}
+      ]
     }
   ]'
-```
-
-```javascript Node.js
-const axios = require('axios');
-
-const { data } = await axios.post('https://api.example.com/scopes/batch', [
-  { id: 'scope_acme', typeId: 'scope_type_org', name: 'Acme Corp', externalId: 'acme-corp' },
-  { id: 'scope_engineering', typeId: 'scope_type_team', name: 'Engineering', externalId: 'engineering' },
-  { id: 'scope_backend', typeId: 'scope_type_project', name: 'Backend API', externalId: 'backend-api' },
-], {
-  headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
-});
 ```
 </RequestExample>
 
@@ -84,23 +97,58 @@ const { data } = await axios.post('https://api.example.com/scopes/batch', [
 ```json Response
 [
   {
-    "id": "scope_acme",
-    "typeId": "scope_type_org",
-    "name": "Acme Corp",
-    "externalId": "acme-corp"
-  },
-  {
     "id": "scope_engineering",
-    "typeId": "scope_type_team",
-    "name": "Engineering",
-    "externalId": "engineering"
+    "typeId": "type_department",
+    "name": "Engineering"
   },
   {
     "id": "scope_backend",
-    "typeId": "scope_type_project",
-    "name": "Backend API",
-    "externalId": "backend-api"
+    "typeId": "type_team",
+    "name": "Backend Team"
+  },
+  {
+    "id": "scope_frontend",
+    "typeId": "type_team",
+    "name": "Frontend Team"
   }
 ]
 ```
 </ResponseExample>
+
+## Examples
+
+### Basic Batch
+
+```bash
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"typeId": "type_team", "name": "Team A"},
+    {"typeId": "type_team", "name": "Team B"},
+    {"typeId": "type_team", "name": "Team C"}
+  ]'
+```
+
+### With In-Batch Parent References
+
+Use client-provided IDs to reference scopes within the same batch:
+
+```bash
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {
+      "id": "scope_dept",
+      "typeId": "type_department",
+      "name": "Engineering"
+    },
+    {
+      "typeId": "type_team",
+      "name": "Backend",
+      "parentScopeId": "scope_dept"
+    },
+    {
+      "typeId": "type_team",
+      "name": "Frontend",
+      "parentScopeId": "scope_dept"
+    }
+  ]'
+```

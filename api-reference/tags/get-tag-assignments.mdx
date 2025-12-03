@@ -1,0 +1,68 @@
+---
+title: 'Get Tag Assignments'
+api: 'GET /tag-assignments'
+description: 'List tag assignments with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="tagId" type="string">
+  Filter by tag ID
+</ParamField>
+
+<ParamField query="targetType" type="string">
+  Filter by target type. One of: `resource`, `subject`, `role`, `permission`
+</ParamField>
+
+<ParamField query="targetId" type="string">
+  Filter by target ID
+</ParamField>
+
+<ParamField query="scopeId" type="string">
+  Filter by scope ID
+</ParamField>
+
+<ParamField query="tagGroupId" type="string">
+  Filter by tag group ID (returns assignments for all tags in the group)
+</ParamField>
+
+## Response
+
+Returns an array of tag assignment objects.
+
+<RequestExample>
+```bash cURL
+# Get all tags for a subject
+curl -X GET 'https://api.example.com/tag-assignments?targetType=subject&targetId=subject_jane' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+
+# Get all assignments for a tag
+curl -X GET 'https://api.example.com/tag-assignments?tagId=tag_engineering' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tag_assignment_001",
+    "tagId": "tag_engineering",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme",
+    "appliedBy": "subject_admin",
+    "appliedAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_assignment_002",
+    "tagId": "tag_backend",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme",
+    "appliedBy": "subject_admin",
+    "appliedAt": "2024-01-15T10:30:01Z"
+  }
+]
+```
+</ResponseExample>

@@ -1,0 +1,34 @@
+---
+title: 'Get Project'
+api: 'GET /projects/{id}'
+description: 'Get a project by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project ID
+</ParamField>
+
+## Response
+
+Returns the project object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/projects/project_api' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "project_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tenantId": "tenant_acme",
+  "workspaceId": "workspace_main",
+  "scopeId": "scope_project_api",
+  "name": "API Service"
+}
+```
+</ResponseExample>

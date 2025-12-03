@@ -1,0 +1,240 @@
+---
+title: 'On Behalf Of'
+description: 'How actor and principal permissions are evaluated together'
+icon: 'user-group'
+---
+
+## Overview
+
+The `onBehalfOf` field in evaluation requests enables **delegated authorization**. When provided, Bedrock evaluates permissions for both the actor (who's performing the action) and the principal (who they're acting for).
+
+## Evaluation Input
+
+```typescript
+interface BedrockEvaluateInput {
+  actor: BedrockSubjectRef;        // Required: who is performing the action
+  onBehalfOf?: BedrockSubjectRef;  // Optional: who they're acting for
+  scopeId: string;
+  action: string;
+  resource?: BedrockResourceRef;
+  context?: Record<string, unknown>;
+}
+
+interface BedrockSubjectRef {
+  subjectId: string;
+  subjectType: SubjectTypeEnum | string;
+}
+```
+
+## How Evaluation Works
+
+### Without onBehalfOf
+
+Only the actor's permissions are checked:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceType: "document" }
+});
+
+// Checks: Does Jane have "document:read" in scope_engineering?
+```
+
+### With onBehalfOf
+
+Both actor AND principal must have the permission:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceType: "document" }
+});
+
+// Checks:
+// 1. Does the agent have "document:read" in scope_engineering?
+// 2. Does Jane have "document:read" in scope_engineering?
+// 3. Both must pass
+```
+
+## Decision Output
+
+The decision includes delegation details:
+
+```typescript
+interface BedrockDecision {
+  allowed: boolean;
+  matches: BedrockPermissionMatch[];
+  explanation?: string;
+  
+  // Delegation fields
+  usedDelegation?: boolean;        // Was onBehalfOf provided?
+  delegationId?: string;           // Reference for audit
+  evaluatedActor?: BedrockSubjectRef;
+  evaluatedOnBehalfOf?: BedrockSubjectRef;
+}
+```
+
+### Example Response
+
+```typescript
+{
+  allowed: true,
+  matches: [
+    { permission: {...}, sourceRoleIds: ["role_agent_reader"] },
+    { permission: {...}, sourceRoleIds: ["role_editor"] }
+  ],
+  explanation: "Allowed via delegation: agent has permission, principal has permission",
+  usedDelegation: true,
+  evaluatedActor: { subjectId: "subject_agent", subjectType: "agent" },
+  evaluatedOnBehalfOf: { subjectId: "subject_jane", subjectType: "user" }
+}
+```
+
+## Permission Scenarios
+
+### Scenario 1: Both Have Permission ✅
+
+```
+Agent: Has "document:read" via "Agent Reader" role
+Jane:  Has "document:read" via "Editor" role
+
+Result: ALLOWED
+```
+
+### Scenario 2: Only Actor Has Permission ❌
+
+```
+Agent: Has "document:read" via "Agent Reader" role
+Jane:  Does NOT have "document:read" (Viewer role only has "document:list")
+
+Result: DENIED
+Reason: Principal lacks required permission
+```
+
+### Scenario 3: Only Principal Has Permission ❌
+
+```
+Agent: Does NOT have "document:read" (no role assignment)
+Jane:  Has "document:read" via "Editor" role
+
+Result: DENIED
+Reason: Actor lacks required permission
+```
+
+### Scenario 4: Neither Has Permission ❌
+
+```
+Agent: No "document:read" permission
+Jane:  No "document:read" permission
+
+Result: DENIED
+Reason: Neither actor nor principal has permission
+```
+
+## Scope Considerations
+
+Both actor and principal must have permissions in the **same scope** (or inherit from parent scopes):
+
+```typescript
+// Agent is member of scope_org
+// Jane is member of scope_engineering (child of scope_org)
+
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",  // Evaluating in engineering scope
+  action: "read",
+  resource: { resourceType: "document" }
+});
+
+// Agent's permissions from scope_org apply (inherited)
+// Jane's permissions from scope_engineering apply (direct)
+```
+
+## Overrides Apply to Both
+
+Scope overrides affect both actor and principal:
+
+```bash
+# Disable "write" permission in production
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "permissionId": "perm_write",
+    "state": "disabled"
+  }'
+```
+
+```typescript
+// Even if both have "write" normally, it's disabled in production
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_production",
+  action: "write",
+  resource: { resourceType: "document" }
+});
+
+// Result: DENIED (override applies)
+```
+
+## Conditional Permissions
+
+Conditions are evaluated for both actor and principal:
+
+```bash
+# Permission with department condition
+{
+  "action": "read",
+  "resourceType": "document",
+  "logic": {
+    "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
+  }
+}
+```
+
+```typescript
+// Agent has meta.department = "platform"
+// Jane has meta.department = "engineering"
+// Document has tags.departments = ["engineering"]
+
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_eng_doc" }
+});
+
+// Agent condition: "platform" in ["engineering"] = false
+// Result: DENIED (actor fails condition)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always use onBehalfOf for user-initiated agent actions">
+    When a user triggers an agent action, include their identity as the principal.
+  </Accordion>
+  <Accordion title="Give agents minimal permissions">
+    Agents should have the minimum permissions needed. Delegation ensures they can't exceed user permissions.
+  </Accordion>
+  <Accordion title="Log both actor and principal">
+    For audit trails, always log both the actor and principal from the decision.
+  </Accordion>
+  <Accordion title="Consider agent-specific roles">
+    Create roles specifically for agents with appropriate permission sets.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<Card title="Agent Delegation" icon="arrow-right" href="/delegation/agent-delegation">
+  Patterns for AI agent delegation
+</Card>

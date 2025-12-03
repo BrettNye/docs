@@ -1,12 +1,12 @@
 ---
 title: 'Create Tag Groups (Batch)'
 api: 'POST /tag-groups/batch'
-description: 'Create multiple tag groups in a single request'
+description: 'Create multiple tag groups with inline tags in a single request'
 ---
 
 ## Overview
 
-Batch creation allows you to create multiple tag groups in a single API call.
+Batch creation allows you to create multiple tag groups in a single API call. Each tag group can include inline tags that are created automatically.
 
 <Info>
   **ID Format**: All IDs use a namespaced UUIDv7 format: `tag_group_{uuidv7}`.
@@ -36,8 +36,8 @@ Array of tag group objects:
   Description of the tag group
 </ParamField>
 
-<ParamField body="[].origin" type="string" required>
-  Origin of the tag group. One of: `system`, `user`
+<ParamField body="[].origin" type="string">
+  Origin of the tag group. One of: `system`, `user`. Default: `user`
 </ParamField>
 
 <ParamField body="[].maxAppliedPerTarget" type="number">
@@ -48,9 +48,20 @@ Array of tag group objects:
   Whether the tag group is locked from modifications
 </ParamField>
 
+<ParamField body="[].tags" type="array">
+  Optional array of inline tags to create with the group. Each tag has:
+  - `id` (optional): Client-provided ID
+  - `identifier` (required): Unique identifier within the group
+  - `label` (required): Display label for the tag
+</ParamField>
+
 ## Response
 
 Returns an array of created tag group objects.
+
+<Note>
+  Each tag group can include a `tags` array to create tags inline. This allows you to set up complete tag taxonomies in a single request.
+</Note>
 
 <RequestExample>
 ```bash cURL
@@ -59,22 +70,41 @@ curl -X POST 'https://api.example.com/tag-groups/batch' \
   -H 'Content-Type: application/json' \
   -d '[
     {
-      "id": "tag_group_priority",
-      "scopeId": "scope_acme",
+      "scopeId": "scope_project",
       "name": "Priority",
       "key": "priority",
       "description": "Task priority levels",
-      "origin": "user",
-      "maxAppliedPerTarget": 1
+      "maxAppliedPerTarget": 1,
+      "tags": [
+        {"identifier": "critical", "label": "Critical"},
+        {"identifier": "high", "label": "High"},
+        {"identifier": "medium", "label": "Medium"},
+        {"identifier": "low", "label": "Low"}
+      ]
     },
     {
-      "id": "tag_group_status",
-      "scopeId": "scope_acme",
+      "scopeId": "scope_project",
       "name": "Status",
       "key": "status",
       "description": "Task status",
-      "origin": "user",
-      "maxAppliedPerTarget": 1
+      "maxAppliedPerTarget": 1,
+      "tags": [
+        {"identifier": "open", "label": "Open"},
+        {"identifier": "in_progress", "label": "In Progress"},
+        {"identifier": "review", "label": "In Review"},
+        {"identifier": "done", "label": "Done"}
+      ]
+    },
+    {
+      "scopeId": "scope_project",
+      "name": "Departments",
+      "key": "departments",
+      "description": "Organization departments",
+      "tags": [
+        {"identifier": "engineering", "label": "Engineering"},
+        {"identifier": "sales", "label": "Sales"},
+        {"identifier": "marketing", "label": "Marketing"}
+      ]
     }
   ]'
 ```
@@ -84,27 +114,36 @@ curl -X POST 'https://api.example.com/tag-groups/batch' \
 ```json Response
 [
   {
-    "id": "tag_group_priority",
-    "scopeId": "scope_acme",
+    "id": "tag_group_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "scopeId": "scope_project",
     "name": "Priority",
     "key": "priority",
     "description": "Task priority levels",
     "origin": "user",
     "maxAppliedPerTarget": 1,
     "isLocked": false,
-    "createdBy": "system",
     "createdAt": "2024-01-15T10:30:00Z"
   },
   {
-    "id": "tag_group_status",
-    "scopeId": "scope_acme",
+    "id": "tag_group_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "scopeId": "scope_project",
     "name": "Status",
     "key": "status",
     "description": "Task status",
     "origin": "user",
     "maxAppliedPerTarget": 1,
     "isLocked": false,
-    "createdBy": "system",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_group_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5d",
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Organization departments",
+    "origin": "user",
+    "maxAppliedPerTarget": null,
+    "isLocked": false,
     "createdAt": "2024-01-15T10:30:00Z"
   }
 ]

@@ -21,12 +21,54 @@
             ]
           },
           {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/index",
+              "concepts/scopes",
+              "concepts/scope-types",
+              "concepts/subjects",
+              "concepts/roles",
+              "concepts/permissions",
+              "concepts/evaluation"
+            ]
+          },
+          {
+            "group": "Resources & Tags",
+            "pages": [
+              "resources/resources",
+              "resources/resource-types",
+              "resources/resource-hierarchies",
+              "resources/multi-scope-resources",
+              "tags/tags",
+              "tags/tag-groups",
+              "tags/tag-bindings",
+              "tags/tag-based-access"
+            ]
+          },
+          {
+            "group": "Delegation",
+            "pages": [
+              "delegation/index",
+              "delegation/on-behalf-of",
+              "delegation/agent-delegation"
+            ]
+          },
+          {
             "group": "Use Cases",
             "pages": [
               "guides/user-governance",
               "guides/agent-governance",
               "guides/multi-tenant",
               "guides/scope-overrides"
+            ]
+          },
+          {
+            "group": "Modeling Guides",
+            "pages": [
+              "guides/modeling-saas",
+              "guides/modeling-organizations",
+              "guides/row-level-access",
+              "guides/conditional-permissions"
             ]
           }
         ]
@@ -210,24 +252,88 @@
               "api-reference/tags/update-tag",
               "api-reference/tags/delete-tag"
             ]
+          },
+          {
+            "group": "Tag Bindings",
+            "pages": [
+              "api-reference/tags/get-tag-bindings",
+              "api-reference/tags/create-tag-binding",
+              "api-reference/tags/delete-tag-binding"
+            ]
+          },
+          {
+            "group": "Tag Assignments",
+            "pages": [
+              "api-reference/tags/get-tag-assignments",
+              "api-reference/tags/create-tag-assignment",
+              "api-reference/tags/create-tag-assignments-batch",
+              "api-reference/tags/delete-tag-assignment"
+            ]
+          },
+          {
+            "group": "Tenants",
+            "pages": [
+              "api-reference/tenants/get-tenants",
+              "api-reference/tenants/get-tenant",
+              "api-reference/tenants/create-tenant",
+              "api-reference/tenants/update-tenant",
+              "api-reference/tenants/delete-tenant"
+            ]
+          },
+          {
+            "group": "Workspaces",
+            "pages": [
+              "api-reference/workspaces/get-workspaces",
+              "api-reference/workspaces/get-workspace",
+              "api-reference/workspaces/create-workspace",
+              "api-reference/workspaces/update-workspace",
+              "api-reference/workspaces/delete-workspace"
+            ]
+          },
+          {
+            "group": "Projects",
+            "pages": [
+              "api-reference/projects/get-projects",
+              "api-reference/projects/get-project",
+              "api-reference/projects/create-project",
+              "api-reference/projects/update-project",
+              "api-reference/projects/delete-project"
+            ]
+          },
+          {
+            "group": "Environments",
+            "pages": [
+              "api-reference/environments/get-environments",
+              "api-reference/environments/get-environment",
+              "api-reference/environments/create-environment",
+              "api-reference/environments/update-environment",
+              "api-reference/environments/delete-environment"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/get-users",
+              "api-reference/users/get-user",
+              "api-reference/users/create-user",
+              "api-reference/users/update-user",
+              "api-reference/users/delete-user"
+            ]
+          },
+          {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/api-keys/get-api-keys",
+              "api-reference/api-keys/get-api-key",
+              "api-reference/api-keys/create-api-key",
+              "api-reference/api-keys/update-api-key",
+              "api-reference/api-keys/revoke-api-key",
+              "api-reference/api-keys/delete-api-key"
+            ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
+    ]
   },
   "api": {
     "mdx": {
@@ -248,7 +354,7 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:brettnye1998@gmail.com"
       }
     ],
     "primary": {

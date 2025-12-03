@@ -1,0 +1,44 @@
+---
+title: 'Update Project'
+api: 'PATCH /projects/{id}'
+description: 'Update a project'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project ID to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name
+</ParamField>
+
+## Response
+
+Returns the updated project object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/projects/project_api' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Backend API Service"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "project_api",
+  "tenantId": "tenant_acme",
+  "workspaceId": "workspace_main",
+  "scopeId": "scope_project_api",
+  "name": "Backend API Service"
+}
+```
+</ResponseExample>

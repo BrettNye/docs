@@ -1,0 +1,46 @@
+---
+title: 'Get API Key'
+api: 'GET /api-keys/{id}'
+description: 'Get an API key by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The API key ID
+</ParamField>
+
+## Response
+
+Returns the API key object. Note: The actual key value is never returned after creation.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/api-keys/apk_001' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "apk_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "subjectId": "subject_api_key_001",
+  "tenantId": "tenant_acme",
+  "environmentId": "environment_prod",
+  "name": "CI Pipeline",
+  "description": "Used for automated deployments",
+  "prefix": "qs_live_xxxx",
+  "lastFour": "a1b2",
+  "hashAlgo": "argon2id",
+  "createdBySubjectId": "subject_jane",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "expiresAt": "2025-01-15T10:30:00Z",
+  "status": "active",
+  "lastUsedAt": "2024-01-20T14:00:00Z",
+  "lastUsedIp": "192.168.1.1",
+  "intendedUse": "ci-cd",
+  "metadata": {}
+}
+```
+</ResponseExample>

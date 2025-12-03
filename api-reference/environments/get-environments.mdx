@@ -1,0 +1,47 @@
+---
+title: 'Get Environments'
+api: 'GET /environments'
+description: 'List environments with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="tenantId" type="string">
+  Filter by tenant ID
+</ParamField>
+
+<ParamField query="projectId" type="string">
+  Filter by project ID
+</ParamField>
+
+## Response
+
+Returns an array of environment objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/environments?projectId=project_api' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "environment_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "tenantId": "tenant_acme",
+    "projectId": "project_api",
+    "scopeId": "scope_env_prod",
+    "name": "Production"
+  },
+  {
+    "id": "environment_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "tenantId": "tenant_acme",
+    "projectId": "project_api",
+    "scopeId": "scope_env_staging",
+    "name": "Staging"
+  }
+]
+```
+</ResponseExample>

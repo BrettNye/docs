@@ -1,0 +1,253 @@
+---
+title: 'Tags'
+description: 'Flexible classification for resources and subjects'
+icon: 'tags'
+---
+
+## What are Tags?
+
+**Tags** provide flexible, attribute-based classification for resources and subjects. Unlike hierarchical structures, tags allow many-to-many relationships—a document can be tagged as both "confidential" and "finance" and "q4-2024".
+
+Tags enable:
+- Attribute-based access control (ABAC)
+- Dynamic filtering and queries
+- Conditional permissions based on tag matching
+
+<CardGroup cols={2}>
+  <Card title="Tag Groups" icon="layer-group" href="/tags/tag-groups">
+    Organize related tags together
+  </Card>
+  <Card title="Tag Bindings" icon="link" href="/tags/tag-bindings">
+    Control which models can use which tag groups
+  </Card>
+  <Card title="Tag-Based Access" icon="key" href="/tags/tag-based-access">
+    Use tags in permission conditions
+  </Card>
+</CardGroup>
+
+## Tag Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `scopeId` | `string` | Scope where this tag is defined |
+| `tagGroupId` | `string` | The tag group this tag belongs to |
+| `identifier` | `string` | Machine-readable key |
+| `label` | `string` | Human-readable display name |
+| `createdBy` | `string` | Subject who created it |
+| `createdAt` | `Date` | Creation timestamp |
+
+## Creating Tags
+
+Tags must belong to a tag group. You can create them in two ways:
+
+### Option 1: Inline Tags (Recommended)
+
+Create a tag group with its tags in a single request:
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Company departments",
+    "tags": [
+      {"identifier": "engineering", "label": "Engineering"},
+      {"identifier": "sales", "label": "Sales"},
+      {"identifier": "finance", "label": "Finance"},
+      {"identifier": "hr", "label": "Human Resources"}
+    ]
+  }'
+```
+
+<Note>
+  Inline tags automatically inherit `scopeId` and `tagGroupId` from the parent group.
+</Note>
+
+### Option 2: Separate Requests
+
+Create the tag group first, then add tags:
+
+```bash
+# First, create a tag group
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Company departments"
+  }'
+
+# Then create tags in that group
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "engineering", "label": "Engineering"},
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "sales", "label": "Sales"},
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "finance", "label": "Finance"},
+    {"scopeId": "scope_project", "tagGroupId": "tg_departments", "identifier": "hr", "label": "Human Resources"}
+  ]'
+```
+
+## Assigning Tags
+
+Tags can be assigned to resources and subjects:
+
+### Tag a Resource
+
+```bash
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{
+    "tagId": "tag_finance",
+    "targetType": "resource",
+    "targetId": "resource_doc_123",
+    "scopeId": "scope_org"
+  }'
+```
+
+### Tag a Subject
+
+```bash
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{
+    "tagId": "tag_engineering",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_org"
+  }'
+```
+
+## Taggable Models
+
+The `TaggableModelTypeEnum` defines what can be tagged:
+
+| Model Type | Description |
+|------------|-------------|
+| `resource` | Resource instances |
+| `subject` | Users, agents, services |
+| `role` | Roles |
+| `permission` | Permissions |
+
+## Common Tag Group Patterns
+
+### Departments (Multi-Select)
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Organization departments",
+    "tags": [
+      {"identifier": "engineering", "label": "Engineering"},
+      {"identifier": "sales", "label": "Sales"},
+      {"identifier": "finance", "label": "Finance"},
+      {"identifier": "hr", "label": "Human Resources"}
+    ]
+  }'
+```
+
+### Sensitivity Levels (Single-Select)
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Sensitivity",
+    "key": "sensitivity",
+    "description": "Data sensitivity classification",
+    "maxAppliedPerTarget": 1,
+    "tags": [
+      {"identifier": "public", "label": "Public"},
+      {"identifier": "internal", "label": "Internal"},
+      {"identifier": "confidential", "label": "Confidential"},
+      {"identifier": "restricted", "label": "Restricted"}
+    ]
+  }'
+```
+
+### Project Categories
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Project Type",
+    "key": "project_type",
+    "description": "Type of project",
+    "tags": [
+      {"identifier": "client-work", "label": "Client Work"},
+      {"identifier": "internal", "label": "Internal"},
+      {"identifier": "research", "label": "Research"}
+    ]
+  }'
+```
+
+### Labor Classes (Construction)
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Labor Classes",
+    "key": "labor_classes",
+    "description": "Worker classifications",
+    "tags": [
+      {"identifier": "electrician", "label": "Electrician"},
+      {"identifier": "plumber", "label": "Plumber"},
+      {"identifier": "carpenter", "label": "Carpenter"},
+      {"identifier": "foreman", "label": "Foreman"}
+    ]
+  }'
+```
+
+## Using Tags in Permissions
+
+Tags enable attribute-based access control:
+
+```bash
+# Permission: Users can only read documents tagged with their department
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_project",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:dept-match",
+    "label": "Read Department Documents",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  }'
+```
+
+<Card title="Tag-Based Access" icon="key" href="/tags/tag-based-access">
+  Learn more about using tags in permission conditions
+</Card>
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Tag Group" icon="layer-group" href="/api-reference/tags/create-tag-group">
+    Create a new tag group
+  </Card>
+  <Card title="Create Tag" icon="tag" href="/api-reference/tags/create-tag">
+    Create a tag in a group
+  </Card>
+  <Card title="Get Tags" icon="list" href="/api-reference/tags/get-tags">
+    List tags
+  </Card>
+  <Card title="Get Tag Groups" icon="list" href="/api-reference/tags/get-tag-groups">
+    List tag groups
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Tag Groups" icon="arrow-right" href="/tags/tag-groups">
+  Learn how to organize tags with groups and constraints
+</Card>

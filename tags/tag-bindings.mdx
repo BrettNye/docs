@@ -1,0 +1,255 @@
+---
+title: 'Tag Group Bindings'
+description: 'Control which models can use which tag groups'
+icon: 'link'
+---
+
+## What are Tag Group Bindings?
+
+**Tag group bindings** control which types of entities can be tagged with tags from a specific group. For example, you might want "Departments" tags to apply to both users and documents, but "Sensitivity" tags to only apply to documents.
+
+## Binding Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `tagGroupId` | `string` | The tag group being bound |
+| `modelType` | `TagAssociationModelTypeEnum` | What type of model can use this group |
+| `modelId` | `string` | Specific model ID (optional, for fine-grained control) |
+
+## Model Types
+
+The `TagAssociationModelTypeEnum` defines what can be bound:
+
+| Model Type | Description |
+|------------|-------------|
+| `resource` | Resource instances |
+| `resource_type` | Specific resource types |
+| `subject` | Users, agents, services |
+| `role` | Roles |
+| `permission` | Permissions |
+
+## Creating Bindings
+
+### Bind to All Resources
+
+Allow any resource to use tags from this group:
+
+```bash
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_sensitivity",
+    "modelType": "resource"
+  }'
+```
+
+### Bind to Specific Resource Type
+
+Only documents can have sensitivity tags:
+
+```bash
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_sensitivity",
+    "modelType": "resource_type",
+    "modelId": "rtype_document"
+  }'
+```
+
+### Bind to Subjects
+
+Users can be tagged with departments:
+
+```bash
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_departments",
+    "modelType": "subject"
+  }'
+```
+
+## Common Binding Patterns
+
+### Department Tags for Users and Documents
+
+```bash
+# Create the tag group
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Departments",
+    "key": "departments"
+  }'
+
+# Bind to subjects (users can have department tags)
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_departments",
+    "modelType": "subject"
+  }'
+
+# Bind to resources (documents can have department tags)
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_departments",
+    "modelType": "resource"
+  }'
+```
+
+### Sensitivity Only for Documents
+
+```bash
+# Create sensitivity group
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Sensitivity",
+    "key": "sensitivity",
+    "maxAppliedPerTarget": 1
+  }'
+
+# Only bind to document resource type
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_sensitivity",
+    "modelType": "resource_type",
+    "modelId": "rtype_document"
+  }'
+```
+
+### Skills for Users Only
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Skills",
+    "key": "skills"
+  }'
+
+# Only subjects can have skill tags
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_skills",
+    "modelType": "subject"
+  }'
+```
+
+### Labor Classes for Workers and Jobs
+
+```bash
+# Labor class tags
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Labor Classes",
+    "key": "labor-classes"
+  }'
+
+# Workers (subjects) have labor class certifications
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_labor",
+    "modelType": "subject"
+  }'
+
+# Jobs (resources) require specific labor classes
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tg_labor",
+    "modelType": "resource_type",
+    "modelId": "rtype_job"
+  }'
+```
+
+## Validation
+
+When you try to assign a tag, Bedrock validates:
+
+1. The tag group has a binding for the target's model type
+2. If `modelId` is specified, the target matches that specific model
+3. The `maxAppliedPerTarget` constraint is not exceeded
+
+```bash
+# This will fail if tg_sensitivity is not bound to subjects
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{
+    "tagId": "tag_confidential",
+    "targetType": "subject",
+    "targetId": "subject_jane"
+  }'
+# Error: Tag group "sensitivity" is not bound to model type "subject"
+```
+
+## Querying Bindings
+
+```bash
+# Get all bindings for a tag group
+curl -X GET 'https://api.example.com/tag-group-bindings?tagGroupId=tg_departments'
+
+# Get all bindings for a model type
+curl -X GET 'https://api.example.com/tag-group-bindings?modelType=subject'
+```
+
+## Use Cases
+
+### Access Control by Department
+
+Bind departments to both users and documents, then use in permissions:
+
+```bash
+# Binding setup
+curl -X POST 'https://api.example.com/tag-group-bindings/batch' \
+  -d '[
+    {"tagGroupId": "tg_departments", "modelType": "subject"},
+    {"tagGroupId": "tg_departments", "modelType": "resource"}
+  ]'
+
+# Tag a user
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_finance", "targetType": "subject", "targetId": "subject_jane"}'
+
+# Tag a document
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_finance", "targetType": "resource", "targetId": "resource_budget_doc"}'
+
+# Permission: users can read documents in their department
+# (See tag-based-access.mdx for the permission logic)
+```
+
+### Compliance Classification
+
+Only certain resource types need compliance tags:
+
+```bash
+# Compliance tags only for sensitive resource types
+curl -X POST 'https://api.example.com/tag-group-bindings/batch' \
+  -d '[
+    {"tagGroupId": "tg_compliance", "modelType": "resource_type", "modelId": "rtype_customer_data"},
+    {"tagGroupId": "tg_compliance", "modelType": "resource_type", "modelId": "rtype_financial_record"},
+    {"tagGroupId": "tg_compliance", "modelType": "resource_type", "modelId": "rtype_health_record"}
+  ]'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Be intentional about bindings">
+    Don't bind tag groups to everything. Only bind to model types where the tags make sense.
+  </Accordion>
+  <Accordion title="Use resource_type for fine-grained control">
+    When only certain resource types should have a tag group, bind to specific types rather than all resources.
+  </Accordion>
+  <Accordion title="Document your bindings">
+    Keep a record of which tag groups are bound to which models for your team's reference.
+  </Accordion>
+  <Accordion title="Consider access control implications">
+    If you're using tags for access control, ensure both subjects and resources have the necessary bindings.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<Card title="Tag-Based Access" icon="arrow-right" href="/tags/tag-based-access">
+  Learn how to use tags in permission conditions
+</Card>

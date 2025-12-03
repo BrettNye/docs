@@ -1,0 +1,26 @@
+---
+title: 'Delete Tenant'
+api: 'DELETE /tenants/{id}'
+description: 'Soft delete a tenant'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The tenant ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success. The tenant is soft-deleted (status set to `deleted`).
+
+<Warning>
+  Deleting a tenant will also delete all associated workspaces, projects, environments, and memberships.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/tenants/tenant_acme' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

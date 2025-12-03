@@ -1,0 +1,22 @@
+---
+title: 'Delete Environment'
+api: 'DELETE /environments/{id}'
+description: 'Delete an environment'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The environment ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/environments/environment_staging' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

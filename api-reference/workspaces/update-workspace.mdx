@@ -1,0 +1,43 @@
+---
+title: 'Update Workspace'
+api: 'PATCH /workspaces/{id}'
+description: 'Update a workspace'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The workspace ID to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name
+</ParamField>
+
+## Response
+
+Returns the updated workspace object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/workspaces/workspace_main' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Main Engineering"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "workspace_main",
+  "tenantId": "tenant_acme",
+  "scopeId": "scope_workspace_main",
+  "name": "Main Engineering"
+}
+```
+</ResponseExample>

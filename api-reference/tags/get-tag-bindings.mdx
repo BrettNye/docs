@@ -1,0 +1,49 @@
+---
+title: 'Get Tag Group Bindings'
+api: 'GET /tag-group-bindings'
+description: 'List tag group bindings with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="tagGroupId" type="string">
+  Filter by tag group ID
+</ParamField>
+
+<ParamField query="modelType" type="string">
+  Filter by model type. One of: `resource`, `resource_type`, `subject`, `role`, `permission`
+</ParamField>
+
+<ParamField query="modelId" type="string">
+  Filter by specific model ID
+</ParamField>
+
+## Response
+
+Returns an array of tag group binding objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/tag-group-bindings?tagGroupId=tag_group_departments' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tag_binding_001",
+    "tagGroupId": "tag_group_departments",
+    "modelType": "subject",
+    "modelId": null
+  },
+  {
+    "id": "tag_binding_002",
+    "tagGroupId": "tag_group_departments",
+    "modelType": "resource",
+    "modelId": null
+  }
+]
+```
+</ResponseExample>

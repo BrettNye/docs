@@ -1,0 +1,231 @@
+---
+title: 'Resource Hierarchies'
+description: 'Model parent-child relationships between resources'
+icon: 'sitemap'
+---
+
+## What are Resource Hierarchies?
+
+**Resource hierarchies** allow you to model parent-child relationships between resources. A folder contains documents, a project contains tasks, an order contains line items. These relationships enable hierarchical permission propagation and structured queries.
+
+## Hierarchy Edge Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `parentResourceId` | `string` | The parent resource |
+| `childResourceId` | `string` | The child resource |
+| `relationshipType` | `string?` | Type of relationship (e.g., "contains", "references") |
+| `createdAt` | `string` | When the relationship was created |
+
+## Creating Resource Hierarchies
+
+```bash
+# Create a folder
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_folder",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "folder-123",
+    "displayName": "Engineering Docs"
+  }'
+
+# Create a document
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_document",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "doc-456",
+    "displayName": "API Design Doc"
+  }'
+
+# Link document to folder
+curl -X POST 'https://api.example.com/resource-hierarchy' \
+  -d '{
+    "parentResourceId": "resource_folder_123",
+    "childResourceId": "resource_doc_456",
+    "relationshipType": "contains"
+  }'
+```
+
+## Resource Type Hierarchies
+
+Before creating resource hierarchies, define which resource types can contain which:
+
+```bash
+# Folders can contain Documents
+curl -X POST 'https://api.example.com/resource-type-hierarchy' \
+  -d '{
+    "parentTypeId": "rtype_folder",
+    "childTypeId": "rtype_document"
+  }'
+
+# Folders can contain Folders (nested)
+curl -X POST 'https://api.example.com/resource-type-hierarchy' \
+  -d '{
+    "parentTypeId": "rtype_folder",
+    "childTypeId": "rtype_folder"
+  }'
+
+# Projects can contain Tasks
+curl -X POST 'https://api.example.com/resource-type-hierarchy' \
+  -d '{
+    "parentTypeId": "rtype_project",
+    "childTypeId": "rtype_task"
+  }'
+```
+
+## Hierarchical Permission Patterns
+
+### Pattern 1: Folder Access Grants Document Access
+
+When a user can access a folder, they can access its contents:
+
+```typescript
+// Check if user can read the folder
+const folderAccess = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceId: "resource_folder_123" }
+});
+
+// If folder access granted, documents inside are also accessible
+if (folderAccess.allowed) {
+  // User can read documents in this folder
+}
+```
+
+### Pattern 2: Inherited Permissions
+
+Define permissions that propagate through the hierarchy:
+
+```bash
+# Permission to read folder and all contents
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "folder",
+    "resourcePattern": "*",
+    "key": "folder:read:*",
+    "label": "Read Folder and Contents",
+    "logic": {
+      "or": [
+        {"==": [{"var": "resource.type"}, "folder"]},
+        {"in": [{"var": "resource.parentId"}, {"var": "subject.accessibleFolders"}]}
+      ]
+    }
+  }'
+```
+
+## Common Hierarchy Patterns
+
+### Document Management
+
+```
+Workspace
+└── Folder
+    ├── Document
+    │   └── Comment
+    └── Folder (nested)
+        └── Document
+```
+
+```bash
+# Define type hierarchy
+curl -X POST 'https://api.example.com/resource-type-hierarchy/batch' \
+  -d '[
+    {"parentTypeId": "rtype_workspace", "childTypeId": "rtype_folder"},
+    {"parentTypeId": "rtype_folder", "childTypeId": "rtype_folder"},
+    {"parentTypeId": "rtype_folder", "childTypeId": "rtype_document"},
+    {"parentTypeId": "rtype_document", "childTypeId": "rtype_comment"}
+  ]'
+```
+
+### Project Management
+
+```
+Project
+├── Epic
+│   └── Issue
+│       └── Subtask
+└── Sprint
+    └── Issue (linked)
+```
+
+### E-Commerce
+
+```
+Store
+└── Category
+    └── Product
+        ├── Variant
+        └── Review
+```
+
+### Construction
+
+```
+Job Site
+├── Work Order
+│   └── Task
+└── Daily Log
+    └── Entry
+```
+
+## Querying Hierarchies
+
+```bash
+# Get children of a resource
+curl -X GET 'https://api.example.com/resources/resource_folder_123/children'
+
+# Get parent of a resource
+curl -X GET 'https://api.example.com/resources/resource_doc_456/parent'
+
+# Get all descendants (recursive)
+curl -X GET 'https://api.example.com/resources/resource_folder_123/descendants'
+```
+
+## Relationship Types
+
+Use `relationshipType` to distinguish different kinds of relationships:
+
+| Type | Use Case |
+|------|----------|
+| `contains` | Parent physically contains child (folder → document) |
+| `references` | Parent references child (issue → linked issue) |
+| `owns` | Parent owns child (user → created documents) |
+| `depends-on` | Parent depends on child (task → blocking task) |
+
+```bash
+# Different relationship types
+curl -X POST 'https://api.example.com/resource-hierarchy/batch' \
+  -d '[
+    {"parentResourceId": "folder_1", "childResourceId": "doc_1", "relationshipType": "contains"},
+    {"parentResourceId": "issue_1", "childResourceId": "issue_2", "relationshipType": "references"},
+    {"parentResourceId": "task_1", "childResourceId": "task_2", "relationshipType": "depends-on"}
+  ]'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Define type hierarchies first">
+    Always define resource type hierarchies before creating resource instance hierarchies.
+  </Accordion>
+  <Accordion title="Use meaningful relationship types">
+    Choose relationship types that reflect your domain model.
+  </Accordion>
+  <Accordion title="Avoid deep nesting">
+    Very deep hierarchies can impact query performance. Consider flattening when possible.
+  </Accordion>
+  <Accordion title="Consider permission implications">
+    Plan how permissions will propagate through your hierarchy before building it.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<Card title="Multi-Scope Resources" icon="arrow-right" href="/resources/multi-scope-resources">
+  Learn how to share resources across multiple scopes
+</Card>

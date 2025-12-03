@@ -1,0 +1,70 @@
+---
+title: 'Update User'
+api: 'PATCH /users/{id}'
+description: 'Update a user'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The user ID to update
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField body="firstName" type="string">
+  First name
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  Last name
+</ParamField>
+
+<ParamField body="displayName" type="string">
+  Display name
+</ParamField>
+
+<ParamField body="avatarUrl" type="string">
+  Avatar URL
+</ParamField>
+
+<ParamField body="defaultTenantId" type="string">
+  Default tenant
+</ParamField>
+
+<ParamField body="status" type="string">
+  User status. One of: `active`, `inactive`, `suspended`
+</ParamField>
+
+## Response
+
+Returns the updated user object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/users/user_jane' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "displayName": "Jane D.",
+    "defaultTenantId": "tenant_globex"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "user_jane",
+  "subjectId": "subject_jane",
+  "kindeId": "kp_abc123",
+  "email": "jane@acme.com",
+  "displayName": "Jane D.",
+  "defaultTenantId": "tenant_globex",
+  "status": "active",
+  "updatedAt": "2024-01-16T10:30:00Z"
+}
+```
+</ResponseExample>

@@ -1,0 +1,61 @@
+---
+title: 'Update API Key'
+api: 'PATCH /api-keys/{id}'
+description: 'Update an API key'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The API key ID to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description
+</ParamField>
+
+<ParamField body="expiresAt" type="string">
+  New expiration date (ISO 8601)
+</ParamField>
+
+<ParamField body="intendedUse" type="string">
+  Intended use case
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Custom metadata
+</ParamField>
+
+## Response
+
+Returns the updated API key object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/api-keys/apk_001' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "CI Pipeline (Updated)",
+    "expiresAt": "2026-01-15T10:30:00Z"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "apk_001",
+  "name": "CI Pipeline (Updated)",
+  "expiresAt": "2026-01-15T10:30:00Z",
+  "status": "active",
+  "updatedAt": "2024-01-16T10:30:00Z"
+}
+```
+</ResponseExample>

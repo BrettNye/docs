@@ -1,0 +1,26 @@
+---
+title: 'Delete Workspace'
+api: 'DELETE /workspaces/{id}'
+description: 'Delete a workspace'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The workspace ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<Warning>
+  Deleting a workspace will also delete all associated projects and environments.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/workspaces/workspace_main' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

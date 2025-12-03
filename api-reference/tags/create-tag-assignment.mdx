@@ -1,0 +1,85 @@
+---
+title: 'Create Tag Assignment'
+api: 'POST /tag-assignments'
+description: 'Assign a tag to a target (resource, subject, etc.)'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `tag_assignment_{uuidv7}`
+</ParamField>
+
+<ParamField body="tagId" type="string" required>
+  ID of the tag to assign
+</ParamField>
+
+<ParamField body="targetType" type="string" required>
+  Type of target. One of: `resource`, `subject`, `role`, `permission`
+</ParamField>
+
+<ParamField body="targetId" type="string" required>
+  ID of the target entity
+</ParamField>
+
+<ParamField body="scopeId" type="string" required>
+  Scope context for this assignment
+</ParamField>
+
+## Response
+
+Returns the created tag assignment object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagId": "tag_engineering",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_assignment_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tagId": "tag_engineering",
+  "targetType": "subject",
+  "targetId": "subject_jane",
+  "scopeId": "scope_acme",
+  "appliedBy": "subject_admin",
+  "appliedAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>
+
+## Examples
+
+### Tag a Resource
+
+```bash
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{
+    "tagId": "tag_confidential",
+    "targetType": "resource",
+    "targetId": "resource_doc_123",
+    "scopeId": "scope_acme"
+  }'
+```
+
+### Tag a Subject
+
+```bash
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{
+    "tagId": "tag_engineering",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme"
+  }'
+```

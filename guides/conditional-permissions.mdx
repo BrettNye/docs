@@ -1,0 +1,365 @@
+---
+title: 'Conditional Permissions'
+description: 'Dynamic access control with JSON Logic'
+icon: 'code'
+---
+
+## Overview
+
+Conditional permissions use **JSON Logic** to make dynamic authorization decisions based on subject attributes, resource attributes, tags, and context. This enables attribute-based access control (ABAC) beyond simple role assignments.
+
+## JSON Logic Basics
+
+Bedrock uses [JSON Logic](https://jsonlogic.com/) for permission conditions. The `logic` field on a permission contains a JSON Logic expression that must evaluate to `true` for the permission to apply.
+
+### Simple Comparison
+
+```json
+{"==": [{"var": "subject.meta.department"}, "engineering"]}
+```
+
+### Variable Access
+
+```json
+{"var": "subject.meta.clearanceLevel"}
+```
+
+### Nested Properties
+
+```json
+{"var": "resource.meta.owner.id"}
+```
+
+## Available Variables
+
+| Variable | Description |
+|----------|-------------|
+| `subject.id` | Subject's Bedrock ID |
+| `subject.type` | Subject type (user, agent, etc.) |
+| `subject.externalId` | External system ID |
+| `subject.meta.*` | Subject metadata fields |
+| `subject.tags.*` | Subject's tags by group key |
+| `resource.id` | Resource's Bedrock ID |
+| `resource.type` | Resource type key |
+| `resource.scopeId` | Resource's owning scope |
+| `resource.externalResourceId` | External resource ID |
+| `resource.meta.*` | Resource metadata |
+| `resource.tags.*` | Resource's tags by group key |
+| `context.*` | Custom context passed in evaluation |
+
+## Common Operators
+
+### Comparison
+
+```json
+// Equals
+{"==": [{"var": "a"}, {"var": "b"}]}
+
+// Not equals
+{"!=": [{"var": "a"}, {"var": "b"}]}
+
+// Greater than
+{">": [{"var": "subject.meta.level"}, 5]}
+
+// Greater than or equal
+{">=": [{"var": "subject.meta.clearance"}, {"var": "resource.meta.requiredClearance"}]}
+
+// Less than
+{"<": [{"var": "context.hour"}, 17]}
+
+// Less than or equal
+{"<=": [{"var": "subject.meta.age"}, 65]}
+```
+
+### Logical
+
+```json
+// AND
+{"and": [
+  {"==": [{"var": "subject.meta.active"}, true]},
+  {">=": [{"var": "subject.meta.level"}, 3]}
+]}
+
+// OR
+{"or": [
+  {"==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]},
+  {"var": "subject.meta.isAdmin"}
+]}
+
+// NOT
+{"!": {"var": "resource.meta.archived"}}
+```
+
+### Array Operations
+
+```json
+// In array
+{"in": ["engineering", {"var": "subject.tags.departments"}]}
+
+// Some (any element matches)
+{"some": [
+  {"var": "resource.tags.departments"},
+  {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+]}
+
+// All (every element matches)
+{"all": [
+  {"var": "resource.tags.required-certs"},
+  {"in": [{"var": ""}, {"var": "subject.tags.certifications"}]}
+]}
+
+// None (no element matches)
+{"none": [
+  {"var": "resource.tags.blocked-departments"},
+  {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+]}
+```
+
+## Permission Examples
+
+### Department Match
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:dept",
+    "label": "Read Department Documents",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  }'
+```
+
+### Owner Access
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "update",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:update:owner",
+    "label": "Update Own Documents",
+    "logic": {
+      "==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]
+    }
+  }'
+```
+
+### Clearance Level
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "classified",
+    "resourcePattern": "*",
+    "key": "classified:read:clearance",
+    "label": "Read Classified (Clearance Required)",
+    "logic": {
+      ">=": [
+        {"var": "subject.meta.clearanceLevel"},
+        {"var": "resource.meta.requiredClearance"}
+      ]
+    }
+  }'
+```
+
+### Business Hours Only
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "access",
+    "resourceType": "system",
+    "resourcePattern": "*",
+    "key": "system:access:business-hours",
+    "label": "Access During Business Hours",
+    "logic": {
+      "and": [
+        {">=": [{"var": "context.hour"}, 9]},
+        {"<=": [{"var": "context.hour"}, 17]},
+        {"in": [{"var": "context.dayOfWeek"}, [1, 2, 3, 4, 5]]}
+      ]
+    }
+  }'
+```
+
+### IP Allowlist
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "access",
+    "resourceType": "admin-panel",
+    "resourcePattern": "*",
+    "key": "admin-panel:access:ip",
+    "label": "Access from Allowed IPs",
+    "logic": {
+      "in": [{"var": "context.clientIp"}, {"var": "subject.meta.allowedIps"}]
+    }
+  }'
+```
+
+### Active Employee
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "*",
+    "resourcePattern": "*",
+    "key": "*:read:active",
+    "label": "Read (Active Employees Only)",
+    "logic": {
+      "and": [
+        {"==": [{"var": "subject.meta.status"}, "active"]},
+        {"!": {"var": "subject.meta.terminated"}}
+      ]
+    }
+  }'
+```
+
+### Multi-Factor Required
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "access",
+    "resourceType": "sensitive",
+    "resourcePattern": "*",
+    "key": "sensitive:access:mfa",
+    "label": "Access Sensitive (MFA Required)",
+    "logic": {
+      "==": [{"var": "context.mfaVerified"}, true]
+    }
+  }'
+```
+
+## Complex Examples
+
+### Owner OR Manager OR Admin
+
+```json
+{
+  "or": [
+    {"==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]},
+    {"in": [{"var": "resource.createdBy"}, {"var": "subject.meta.directReports"}]},
+    {"==": [{"var": "subject.meta.role"}, "admin"]}
+  ]
+}
+```
+
+### Department Match AND Clearance AND Active
+
+```json
+{
+  "and": [
+    {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    },
+    {
+      ">=": [
+        {"var": "subject.meta.clearanceLevel"},
+        {"var": "resource.meta.requiredClearance"}
+      ]
+    },
+    {"==": [{"var": "subject.meta.status"}, "active"]}
+  ]
+}
+```
+
+### All Required Certifications
+
+```json
+{
+  "all": [
+    {"var": "resource.tags.required-certifications"},
+    {"in": [{"var": ""}, {"var": "subject.tags.certifications"}]}
+  ]
+}
+```
+
+## Passing Context
+
+Include custom context in evaluations:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "access",
+  resource: { resourceType: "system" },
+  context: {
+    hour: new Date().getHours(),
+    dayOfWeek: new Date().getDay(),
+    clientIp: request.ip,
+    mfaVerified: session.mfaVerified,
+    requestId: request.id
+  }
+});
+```
+
+## Debugging Conditions
+
+The decision includes the evaluated context:
+
+```typescript
+const decision = await bedrock.evaluate({...});
+
+console.log(decision.evaluatedContext);
+// Shows all variables available during evaluation
+
+console.log(decision.explanation);
+// Human-readable explanation of why allowed/denied
+
+console.log(decision.matches);
+// Which permissions matched (or didn't)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep conditions simple">
+    Complex nested conditions are hard to debug. Break into multiple permissions if needed.
+  </Accordion>
+  <Accordion title="Use meaningful variable names">
+    Store data in well-named metadata fields for readable conditions.
+  </Accordion>
+  <Accordion title="Test thoroughly">
+    Test with various combinations of subject/resource attributes.
+  </Accordion>
+  <Accordion title="Document conditions">
+    Use the permission's `description` field to explain what the condition does.
+  </Accordion>
+  <Accordion title="Consider performance">
+    Very complex conditions evaluated frequently can impact performance.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tag-Based Access" icon="tags" href="/tags/tag-based-access">
+    Tag-specific condition patterns
+  </Card>
+  <Card title="Row-Level Access" icon="table" href="/guides/row-level-access">
+    Resource-level permission patterns
+  </Card>
+</CardGroup>

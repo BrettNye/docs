@@ -1,7 +1,7 @@
 ---
 title: 'Create Tag Group'
 api: 'POST /tag-groups'
-description: 'Create a new tag group'
+description: 'Create a new tag group with optional inline tags'
 ---
 
 ## Request Body
@@ -19,15 +19,15 @@ description: 'Create a new tag group'
 </ParamField>
 
 <ParamField body="key" type="string" required>
-  Unique key for the tag group within the scope
+  Unique key for the tag group within the scope. Must be lowercase alphanumeric with underscores.
 </ParamField>
 
 <ParamField body="description" type="string" required>
   Description of the tag group
 </ParamField>
 
-<ParamField body="origin" type="string" required>
-  Origin of the tag group. One of: `system`, `user`
+<ParamField body="origin" type="string">
+  Origin of the tag group. One of: `system`, `user`. Default: `user`
 </ParamField>
 
 <ParamField body="maxAppliedPerTarget" type="number">
@@ -35,12 +35,23 @@ description: 'Create a new tag group'
 </ParamField>
 
 <ParamField body="isLocked" type="boolean">
-  Whether the tag group is locked from modifications
+  Whether the tag group is locked from modifications. Default: `false`
+</ParamField>
+
+<ParamField body="tags" type="array">
+  Optional array of inline tags to create with the group. Each tag has:
+  - `id` (optional): Client-provided ID
+  - `identifier` (required): Unique identifier within the group (lowercase alphanumeric with underscores/hyphens)
+  - `label` (required): Display label for the tag
 </ParamField>
 
 ## Response
 
 Returns the created tag group object.
+
+<Note>
+  You can create a tag group with its tags in a single request using the `tags` array. The tags will automatically inherit the `scopeId` and `tagGroupId` from the parent group.
+</Note>
 
 <RequestExample>
 ```bash cURL
@@ -48,12 +59,16 @@ curl -X POST 'https://api.example.com/tag-groups' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
-    "scopeId": "scope_acme",
+    "scopeId": "scope_project",
     "name": "Priority",
     "key": "priority",
     "description": "Task priority levels",
-    "origin": "user",
-    "maxAppliedPerTarget": 1
+    "maxAppliedPerTarget": 1,
+    "tags": [
+      {"identifier": "high", "label": "High"},
+      {"identifier": "medium", "label": "Medium"},
+      {"identifier": "low", "label": "Low"}
+    ]
   }'
 ```
 </RequestExample>
@@ -62,15 +77,64 @@ curl -X POST 'https://api.example.com/tag-groups' \
 ```json Response
 {
   "id": "tag_group_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
-  "scopeId": "scope_acme",
+  "scopeId": "scope_project",
   "name": "Priority",
   "key": "priority",
   "description": "Task priority levels",
   "origin": "user",
   "maxAppliedPerTarget": 1,
   "isLocked": false,
-  "createdBy": "system",
   "createdAt": "2024-01-15T10:30:00Z"
 }
 ```
 </ResponseExample>
+
+## Examples
+
+### Basic Tag Group (No Inline Tags)
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Status",
+    "key": "status",
+    "description": "Item status"
+  }'
+```
+
+### Tag Group with Inline Tags
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Departments",
+    "key": "departments",
+    "description": "Organization departments",
+    "tags": [
+      {"identifier": "engineering", "label": "Engineering"},
+      {"identifier": "sales", "label": "Sales"},
+      {"identifier": "marketing", "label": "Marketing"},
+      {"identifier": "finance", "label": "Finance"}
+    ]
+  }'
+```
+
+### Single-Select Tag Group
+
+```bash
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{
+    "scopeId": "scope_project",
+    "name": "Environment Type",
+    "key": "env_type",
+    "description": "Deployment environment classification",
+    "maxAppliedPerTarget": 1,
+    "tags": [
+      {"identifier": "production", "label": "Production"},
+      {"identifier": "staging", "label": "Staging"},
+      {"identifier": "development", "label": "Development"}
+    ]
+  }'
+```

@@ -1,0 +1,73 @@
+---
+title: 'Create Tag Group Binding'
+api: 'POST /tag-group-bindings'
+description: 'Bind a tag group to a model type, controlling which entities can use tags from this group'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `tag_binding_{uuidv7}`
+</ParamField>
+
+<ParamField body="tagGroupId" type="string" required>
+  ID of the tag group to bind
+</ParamField>
+
+<ParamField body="modelType" type="string" required>
+  Type of model to bind to. One of: `resource`, `resource_type`, `subject`, `role`, `permission`
+</ParamField>
+
+<ParamField body="modelId" type="string">
+  Optional specific model ID. If omitted, binding applies to all models of the specified type.
+</ParamField>
+
+## Response
+
+Returns the created tag group binding object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tagGroupId": "tag_group_departments",
+    "modelType": "subject"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tag_binding_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tagGroupId": "tag_group_departments",
+  "modelType": "subject",
+  "modelId": null
+}
+```
+</ResponseExample>
+
+## Examples
+
+### Bind to All Resources
+
+```bash
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tag_group_sensitivity",
+    "modelType": "resource"
+  }'
+```
+
+### Bind to Specific Resource Type
+
+```bash
+curl -X POST 'https://api.example.com/tag-group-bindings' \
+  -d '{
+    "tagGroupId": "tag_group_sensitivity",
+    "modelType": "resource_type",
+    "modelId": "resource_type_document"
+  }'
+```

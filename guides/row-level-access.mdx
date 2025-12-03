@@ -1,0 +1,351 @@
+---
+title: 'Row-Level Access Control'
+description: 'Fine-grained permissions for individual resources'
+icon: 'table'
+---
+
+## Overview
+
+Row-level access control (RLAC) restricts access to individual records based on attributes of the user and the record. Instead of "can read all documents", it's "can read documents they own" or "can read documents in their department".
+
+## Patterns
+
+### Pattern 1: Owner-Based Access
+
+Users can only access resources they own:
+
+```bash
+# Create permission with owner condition
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:owned",
+    "label": "Read Own Documents",
+    "logic": {
+      "==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]
+    }
+  }'
+```
+
+```typescript
+// Evaluation
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_doc_123" }  // createdBy: "subject_jane"
+});
+// Result: ALLOWED (Jane owns this document)
+```
+
+### Pattern 2: Department-Based Access
+
+Users can access resources in their department:
+
+```bash
+# Tag users with departments
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_engineering", "targetType": "subject", "targetId": "subject_jane"}'
+
+# Tag resources with departments
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_engineering", "targetType": "resource", "targetId": "resource_doc_123"}'
+
+# Permission: Read documents in your department
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:department",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 3: Manager Access
+
+Managers can access their reports' data:
+
+```bash
+# Store reports in subject metadata
+curl -X PATCH 'https://api.example.com/subjects/subject_manager' \
+  -d '{
+    "meta": {
+      "directReports": ["subject_alice", "subject_bob", "subject_charlie"]
+    }
+  }'
+
+# Permission: Read reports' timesheets
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "timesheet",
+    "resourcePattern": "*",
+    "key": "timesheet:read:reports",
+    "logic": {
+      "in": [{"var": "resource.ownerId"}, {"var": "subject.meta.directReports"}]
+    }
+  }'
+```
+
+### Pattern 4: Project Team Access
+
+Only project team members can access project resources:
+
+```bash
+# Tag users with projects
+curl -X POST 'https://api.example.com/tag-assignments/batch' \
+  -d '[
+    {"tagId": "tag_project_alpha", "targetType": "subject", "targetId": "subject_jane"},
+    {"tagId": "tag_project_alpha", "targetType": "subject", "targetId": "subject_bob"}
+  ]'
+
+# Tag resources with projects
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_project_alpha", "targetType": "resource", "targetId": "resource_spec_doc"}'
+
+# Permission
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "project-doc",
+    "resourcePattern": "*",
+    "key": "project-doc:read:team",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.projects"},
+        {"in": [{"var": ""}, {"var": "subject.tags.projects"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 5: Geographic Restrictions
+
+Access based on region:
+
+```bash
+# Permission: Access customer data in your region
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "customer",
+    "resourcePattern": "*",
+    "key": "customer:read:region",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.regions"},
+        {"in": [{"var": ""}, {"var": "subject.tags.regions"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 6: Sensitivity Levels
+
+Access based on clearance:
+
+```bash
+# Permission: Read documents at or below your clearance
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:clearance",
+    "logic": {
+      ">=": [
+        {"var": "subject.meta.clearanceLevel"},
+        {"var": "resource.meta.requiredClearance"}
+      ]
+    }
+  }'
+```
+
+## Combining Conditions
+
+### Owner OR Department
+
+```json
+{
+  "or": [
+    {"==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]},
+    {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  ]
+}
+```
+
+### Department AND Clearance
+
+```json
+{
+  "and": [
+    {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    },
+    {
+      ">=": [
+        {"var": "subject.meta.clearanceLevel"},
+        {"var": "resource.meta.requiredClearance"}
+      ]
+    }
+  ]
+}
+```
+
+### Owner OR Manager OR Admin
+
+```json
+{
+  "or": [
+    {"==": [{"var": "resource.createdBy"}, {"var": "subject.id"}]},
+    {"in": [{"var": "resource.createdBy"}, {"var": "subject.meta.directReports"}]},
+    {"var": "subject.meta.isAdmin"}
+  ]
+}
+```
+
+## Implementation Patterns
+
+### Pre-Filtering Queries
+
+For list views, pre-filter at the database level:
+
+```typescript
+async function getAccessibleDocuments(userId: string, scopeId: string) {
+  // Get user's effective permissions
+  const permissions = await bedrock.getEffectivePermissions({
+    subjectId: userId,
+    scopeId
+  });
+
+  // Extract conditions from permissions
+  const conditions = extractConditions(permissions, "document", "read");
+
+  // Build database query from conditions
+  const query = buildQueryFromConditions(conditions, userId);
+
+  return db.documents.find(query);
+}
+```
+
+### Post-Filtering Results
+
+For complex conditions, filter after fetching:
+
+```typescript
+async function filterAccessibleDocuments(
+  documents: Document[],
+  userId: string,
+  scopeId: string
+) {
+  const accessible = [];
+
+  for (const doc of documents) {
+    const decision = await bedrock.evaluate({
+      actor: { subjectId: userId, subjectType: "user" },
+      scopeId,
+      action: "read",
+      resource: { resourceId: doc.bedrockResourceId }
+    });
+
+    if (decision.allowed) {
+      accessible.push(doc);
+    }
+  }
+
+  return accessible;
+}
+```
+
+### Bulk Evaluation
+
+Evaluate multiple resources at once:
+
+```typescript
+async function checkAccessBulk(
+  userId: string,
+  scopeId: string,
+  resourceIds: string[]
+) {
+  const inputs = resourceIds.map(resourceId => ({
+    actor: { subjectId: userId, subjectType: "user" },
+    scopeId,
+    action: "read",
+    resource: { resourceId }
+  }));
+
+  const decisions = await bedrock.evaluateBulk(inputs);
+
+  return resourceIds.filter((_, i) => decisions[i].allowed);
+}
+```
+
+## Performance Considerations
+
+<AccordionGroup>
+  <Accordion title="Cache permission evaluations">
+    Cache decisions for the same user/resource/action combinations.
+  </Accordion>
+  <Accordion title="Pre-filter when possible">
+    Convert simple conditions to database queries rather than post-filtering.
+  </Accordion>
+  <Accordion title="Use bulk evaluation">
+    Evaluate multiple resources in one call rather than individual calls.
+  </Accordion>
+  <Accordion title="Denormalize for read performance">
+    Store computed access lists on resources for fast filtering.
+  </Accordion>
+  <Accordion title="Index tag assignments">
+    Ensure tag assignments are indexed for fast lookups.
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep conditions simple">
+    Complex nested conditions are hard to debug and slow to evaluate.
+  </Accordion>
+  <Accordion title="Use tags for flexible classification">
+    Tags are more flexible than hardcoded relationships.
+  </Accordion>
+  <Accordion title="Test edge cases">
+    Test with users who have no tags, resources with no tags, etc.
+  </Accordion>
+  <Accordion title="Document your access model">
+    Make it clear to your team how row-level access works.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Conditional Permissions" icon="code" href="/guides/conditional-permissions">
+    More JSON Logic patterns
+  </Card>
+  <Card title="Tag-Based Access" icon="tags" href="/tags/tag-based-access">
+    Deep dive into tag-based conditions
+  </Card>
+</CardGroup>

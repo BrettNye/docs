@@ -1,0 +1,52 @@
+---
+title: 'Create Environment'
+api: 'POST /environments'
+description: 'Create a new environment within a project'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `environment_{uuidv7}`
+</ParamField>
+
+<ParamField body="tenantId" type="string" required>
+  ID of the tenant
+</ParamField>
+
+<ParamField body="projectId" type="string" required>
+  ID of the project this environment belongs to
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name for the environment (e.g., "Production", "Staging", "Development")
+</ParamField>
+
+## Response
+
+Returns the created environment object. Also creates an associated scope automatically and links it to the project's scope hierarchy.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/environments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "projectId": "project_api",
+    "name": "Production"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "environment_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tenantId": "tenant_acme",
+  "projectId": "project_api",
+  "scopeId": "scope_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+  "name": "Production"
+}
+```
+</ResponseExample>

@@ -1,0 +1,29 @@
+---
+title: 'Delete Tag Assignment'
+api: 'DELETE /tag-assignments/{id}'
+description: 'Remove a tag assignment from a target'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The tag assignment ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/tag-assignments/tag_assignment_001' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+## Alternative: Delete by Tag and Target
+
+```bash
+curl -X DELETE 'https://api.example.com/tag-assignments?tagId=tag_engineering&targetId=subject_jane' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```

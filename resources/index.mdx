@@ -1,0 +1,174 @@
+---
+title: 'Resources'
+description: 'Model and secure the entities in your application'
+icon: 'box'
+---
+
+## What is a Resource?
+
+A **resource** represents an entity in your application that you want to protect with permissions. Documents, projects, users, reports, jobs—anything that subjects need permission to access is a resource.
+
+<CardGroup cols={2}>
+  <Card title="Resource Types" icon="shapes" href="/resources/resource-types">
+    Define categories of resources
+  </Card>
+  <Card title="Resource Hierarchies" icon="sitemap" href="/resources/resource-hierarchies">
+    Model parent-child resource relationships
+  </Card>
+  <Card title="Multi-Scope Resources" icon="share-nodes" href="/resources/multi-scope-resources">
+    Share resources across scopes
+  </Card>
+  <Card title="Tags" icon="tags" href="/tags/index">
+    Classify resources with tags
+  </Card>
+</CardGroup>
+
+## Resource Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique Bedrock identifier |
+| `resourceTypeId` | `string` | Reference to the resource type |
+| `scopeId` | `string` | Owning scope |
+| `externalResourceId` | `string` | Your system's identifier |
+| `displayName` | `string?` | Human-readable name |
+| `createdAt` | `string` | Creation timestamp |
+| `createdBy` | `string` | Subject who created it |
+
+## Creating Resources
+
+```bash
+# First, create a resource type
+curl -X POST 'https://api.example.com/resource-types' \
+  -d '{
+    "name": "Document",
+    "key": "document",
+    "scopeId": "scope_org"
+  }'
+
+# Then create resource instances
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_document",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "doc-123",
+    "displayName": "Q4 Planning Doc"
+  }'
+```
+
+## Resource-Based Permissions
+
+Permissions can target specific resources or resource patterns:
+
+```bash
+# Permission for all documents
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:*"
+  }'
+
+# Permission for a specific document
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "doc-123",
+    "key": "document:read:doc-123"
+  }'
+```
+
+## Evaluating Against Resources
+
+When checking permissions, you can specify the resource:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: {
+    resourceId: "resource_doc_123",
+    // OR
+    externalResourceId: "doc-123",
+    resourceType: "document"
+  }
+});
+```
+
+## Resource Ownership
+
+The `scopeId` on a resource indicates ownership. A document owned by the Engineering scope is primarily associated with that scope:
+
+```bash
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_document",
+    "scopeId": "scope_engineering",  # Owner scope
+    "externalResourceId": "doc-456",
+    "displayName": "Engineering Handbook"
+  }'
+```
+
+## Common Patterns
+
+### Pattern 1: Document Management
+
+```bash
+# Resource types
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Folder", "key": "folder", "scopeId": "scope_org"},
+    {"name": "Document", "key": "document", "scopeId": "scope_org"},
+    {"name": "Comment", "key": "comment", "scopeId": "scope_org"}
+  ]'
+```
+
+### Pattern 2: Project Management
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Project", "key": "project", "scopeId": "scope_org"},
+    {"name": "Task", "key": "task", "scopeId": "scope_org"},
+    {"name": "Milestone", "key": "milestone", "scopeId": "scope_org"}
+  ]'
+```
+
+### Pattern 3: E-Commerce
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Product", "key": "product", "scopeId": "scope_org"},
+    {"name": "Order", "key": "order", "scopeId": "scope_org"},
+    {"name": "Customer", "key": "customer", "scopeId": "scope_org"}
+  ]'
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Resource Type" icon="plus" href="/api-reference/resource-types/create-resource-type">
+    Define a new resource type
+  </Card>
+  <Card title="Create Resource" icon="box" href="/api-reference/resources/create-resource">
+    Create a resource instance
+  </Card>
+  <Card title="Get Resources" icon="list" href="/api-reference/resources/get-resources">
+    List resources
+  </Card>
+  <Card title="Resource Types API" icon="shapes" href="/api-reference/resource-types/get-resource-types">
+    All resource type operations
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Resource Types" icon="arrow-right" href="/resources/resource-types">
+  Learn how to define resource type schemas
+</Card>

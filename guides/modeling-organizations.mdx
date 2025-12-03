@@ -1,0 +1,346 @@
+---
+title: 'Modeling Organizations'
+description: 'Structure teams, departments, and organizational hierarchies'
+icon: 'sitemap'
+---
+
+## Overview
+
+Within a project, you often need to model organizational structures: departments, teams, divisions, and reporting hierarchies. This guide shows how to represent these structures in Bedrock.
+
+<Note>
+  These patterns are typically implemented at the **Project** level, where authorization is configured. The examples below assume you're working within a project's scope.
+</Note>
+
+## Common Organizational Patterns
+
+### Flat Teams
+
+```
+Project
+└── Environment (Production)
+    ├── Engineering
+    ├── Sales
+    ├── Marketing
+    └── Finance
+```
+
+### Hierarchical Departments
+
+```
+Project
+└── Environment (Production)
+    ├── Engineering
+    │   ├── Backend
+    │   ├── Frontend
+    │   └── DevOps
+    ├── Product
+    │   ├── Design
+    │   └── Research
+    └── Operations
+        ├── HR
+        └── Finance
+```
+
+### Matrix Organization
+
+```
+Project
+├── Departments (functional, as scopes)
+│   ├── Engineering
+│   └── Design
+└── Cross-functional teams (as tags)
+    ├── Team Alpha (eng + design)
+    └── Team Beta (eng + design)
+```
+
+## Approach 1: Scopes as Org Units
+
+Model each organizational unit as a scope within your project:
+
+```bash
+# Define org unit scope types at the project level
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -d '[
+    {"id": "type_department", "name": "Department", "config": {"permissionMode": "merge"}},
+    {"id": "type_team", "name": "Team", "config": {"permissionMode": "merge"}}
+  ]'
+
+# Define hierarchy (departments under environments, teams under departments)
+curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
+  -d '[
+    {"parentTypeId": "type_environment", "childTypeId": "type_department"},
+    {"parentTypeId": "type_department", "childTypeId": "type_team"}
+  ]'
+
+# Create departments under an environment
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"id": "scope_engineering", "typeId": "type_department", "name": "Engineering"},
+    {"id": "scope_product", "typeId": "type_department", "name": "Product"}
+  ]'
+
+# Create teams under departments
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"id": "scope_backend", "typeId": "type_team", "name": "Backend"},
+    {"id": "scope_frontend", "typeId": "type_team", "name": "Frontend"}
+  ]'
+
+# Link hierarchy
+curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
+  -d '[
+    {"parentScopeId": "scope_env_production", "childScopeId": "scope_engineering"},
+    {"parentScopeId": "scope_env_production", "childScopeId": "scope_product"},
+    {"parentScopeId": "scope_engineering", "childScopeId": "scope_backend"},
+    {"parentScopeId": "scope_engineering", "childScopeId": "scope_frontend"}
+  ]'
+```
+
+### Pros
+- Natural permission inheritance
+- Clear hierarchy
+- Easy to query
+
+### Cons
+- Deep hierarchies can be complex
+- Harder to model matrix organizations
+
+## Approach 2: Tags for Org Classification
+
+Use tags to classify users and resources by org unit:
+
+```bash
+# Create org tag groups at the project level
+curl -X POST 'https://api.example.com/tag-groups/batch' \
+  -d '[
+    {"scopeId": "scope_project", "name": "Departments", "key": "departments"},
+    {"scopeId": "scope_project", "name": "Teams", "key": "teams"}
+  ]'
+
+# Create tags
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"tagGroupId": "tg_departments", "identifier": "engineering", "label": "Engineering"},
+    {"tagGroupId": "tg_departments", "identifier": "product", "label": "Product"},
+    {"tagGroupId": "tg_teams", "identifier": "backend", "label": "Backend"},
+    {"tagGroupId": "tg_teams", "identifier": "frontend", "label": "Frontend"}
+  ]'
+
+# Tag users
+curl -X POST 'https://api.example.com/tag-assignments/batch' \
+  -d '[
+    {"tagId": "tag_engineering", "targetType": "subject", "targetId": "subject_jane"},
+    {"tagId": "tag_backend", "targetType": "subject", "targetId": "subject_jane"}
+  ]'
+```
+
+### Pros
+- Flexible many-to-many relationships
+- Easy to model matrix orgs
+- Users can belong to multiple teams
+
+### Cons
+- Requires conditional permissions
+- Less intuitive hierarchy
+
+## Approach 3: Hybrid (Recommended)
+
+Combine scopes for major boundaries and tags for classification:
+
+```bash
+# Scopes for major org boundaries (under environment)
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"id": "scope_engineering", "typeId": "type_department", "name": "Engineering"},
+    {"id": "scope_product", "typeId": "type_department", "name": "Product"}
+  ]'
+
+# Tags for teams and specializations (at project level)
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{"scopeId": "scope_project", "name": "Teams", "key": "teams"}'
+
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"tagGroupId": "tg_teams", "identifier": "backend", "label": "Backend"},
+    {"tagGroupId": "tg_teams", "identifier": "frontend", "label": "Frontend"},
+    {"tagGroupId": "tg_teams", "identifier": "platform", "label": "Platform"}
+  ]'
+```
+
+## Role Patterns
+
+### Department-Level Roles
+
+```bash
+# Roles defined at department level
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Engineering Lead", "scopeId": "scope_engineering"},
+    {"name": "Tech Lead", "scopeId": "scope_engineering"},
+    {"name": "Engineer", "scopeId": "scope_engineering"}
+  ]'
+```
+
+### Team-Specific Roles
+
+```bash
+# Roles for specific teams
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Backend Lead", "scopeId": "scope_backend"},
+    {"name": "Frontend Lead", "scopeId": "scope_frontend"}
+  ]'
+```
+
+### Cross-Functional Roles
+
+```bash
+# Roles that span departments (defined at project level)
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Project Manager", "scopeId": "scope_project"},
+    {"name": "Scrum Master", "scopeId": "scope_project"}
+  ]'
+```
+
+## Permission Patterns
+
+### Department Access
+
+```bash
+# Engineers can access engineering resources
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_engineering",
+    "action": "read",
+    "resourceType": "code",
+    "resourcePattern": "*",
+    "key": "code:read:*"
+  }'
+```
+
+### Tag-Based Team Access
+
+```bash
+# Users can access resources tagged with their team
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_project",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:team-match",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.teams"},
+        {"in": [{"var": ""}, {"var": "subject.tags.teams"}]}
+      ]
+    }
+  }'
+```
+
+## Matrix Organization Example
+
+For organizations where people belong to both functional teams and cross-functional initiatives:
+
+```bash
+# Functional departments as scopes (under environment)
+curl -X POST 'https://api.example.com/scopes/batch' \
+  -d '[
+    {"id": "scope_engineering", "typeId": "type_department", "name": "Engineering"},
+    {"id": "scope_design", "typeId": "type_department", "name": "Design"}
+  ]'
+
+# Cross-functional initiatives as tags
+curl -X POST 'https://api.example.com/tag-groups' \
+  -d '{"scopeId": "scope_project", "name": "Initiatives", "key": "initiatives"}'
+
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"tagGroupId": "tg_initiatives", "identifier": "alpha", "label": "Initiative Alpha"},
+    {"tagGroupId": "tg_initiatives", "identifier": "beta", "label": "Initiative Beta"}
+  ]'
+
+# Jane is in Engineering AND on Initiative Alpha
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "subject_jane", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_alpha", "targetType": "subject", "targetId": "subject_jane"}'
+
+# Permission: Access initiative resources if tagged with your initiative
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_project",
+    "action": "read",
+    "resourceType": "initiative-doc",
+    "resourcePattern": "*",
+    "key": "initiative-doc:read:match",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.initiatives"},
+        {"in": [{"var": ""}, {"var": "subject.tags.initiatives"}]}
+      ]
+    }
+  }'
+```
+
+## Reporting Hierarchies
+
+For manager → report relationships:
+
+```bash
+# Store manager relationship in subject metadata
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "jane",
+    "displayName": "Jane Doe",
+    "meta": {
+      "managerId": "subject_bob",
+      "level": 3
+    }
+  }'
+
+# Permission: Managers can view their reports' data
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_project",
+    "action": "read",
+    "resourceType": "employee-data",
+    "resourcePattern": "*",
+    "key": "employee-data:read:manager",
+    "logic": {
+      "==": [{"var": "subject.id"}, {"var": "resource.meta.managerId"}]
+    }
+  }'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use scopes for permission boundaries">
+    Create scopes where you need distinct permission sets or inheritance breaks.
+  </Accordion>
+  <Accordion title="Use tags for flexible classification">
+    Use tags when users/resources belong to multiple groups or relationships are fluid.
+  </Accordion>
+  <Accordion title="Keep hierarchy depth reasonable">
+    Very deep hierarchies are hard to manage. Consider flattening with tags.
+  </Accordion>
+  <Accordion title="Plan for reorganization">
+    Organizations change. Design for easy restructuring.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Row-Level Access" icon="table" href="/guides/row-level-access">
+    Fine-grained resource permissions
+  </Card>
+  <Card title="Tag-Based Access" icon="tags" href="/tags/tag-based-access">
+    More tag-based patterns
+  </Card>
+</CardGroup>

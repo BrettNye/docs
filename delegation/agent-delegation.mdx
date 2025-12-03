@@ -1,0 +1,307 @@
+---
+title: 'Agent Delegation'
+description: 'Patterns for AI agents acting on behalf of users'
+icon: 'robot'
+---
+
+## Overview
+
+AI agents—LLM-powered assistants, autonomous workflows, MCP servers—need to perform actions within user permission contexts. This guide covers patterns for implementing agent delegation in Bedrock.
+
+## Setting Up Agent Delegation
+
+### 1. Create the Agent Subject
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "agent",
+    "externalId": "coding-assistant-v2",
+    "displayName": "Coding Assistant",
+    "meta": {
+      "model": "claude-3",
+      "version": "2.0",
+      "capabilities": ["code-review", "documentation", "refactoring"]
+    }
+  }'
+```
+
+### 2. Add Agent to Scope
+
+```bash
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "subjectId": "subject_coding_assistant",
+    "scopeId": "scope_engineering"
+  }'
+```
+
+### 3. Assign Agent Role
+
+```bash
+# Create an agent-specific role
+curl -X POST 'https://api.example.com/roles' \
+  -d '{
+    "name": "Agent Reader",
+    "description": "Read-only access for AI agents",
+    "scopeId": "scope_org"
+  }'
+
+# Add permissions to the role
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_agent_reader", "permissionId": "perm_file_read"},
+    {"roleId": "role_agent_reader", "permissionId": "perm_doc_read"}
+  ]'
+
+# Assign role to agent's membership
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_agent_reader",
+    "membershipId": "membership_agent_eng"
+  }'
+```
+
+### 4. Evaluate with Delegation
+
+```typescript
+async function agentAction(agentId: string, userId: string, action: string, resource: any) {
+  const decision = await bedrock.evaluate({
+    actor: { subjectId: agentId, subjectType: "agent" },
+    onBehalfOf: { subjectId: userId, subjectType: "user" },
+    scopeId: getCurrentScope(),
+    action,
+    resource
+  });
+
+  if (!decision.allowed) {
+    throw new UnauthorizedError(decision.explanation);
+  }
+
+  // Proceed with action
+  return performAction(action, resource);
+}
+```
+
+## Common Patterns
+
+### Pattern 1: Read-Only Agent
+
+Agent can read anything the user can read, but cannot write:
+
+```bash
+# Agent role: read-only
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Agent Viewer", "scopeId": "scope_org"}'
+
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_agent_viewer", "permissionId": "perm_read"}
+    # No write permissions
+  ]'
+```
+
+```typescript
+// Agent tries to write
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  action: "write",
+  resource: { resourceType: "document" }
+});
+
+// Result: DENIED (agent lacks write permission)
+// Even though Jane has write permission
+```
+
+### Pattern 2: Scoped Agent Access
+
+Agent only has access in specific scopes:
+
+```bash
+# Agent is only a member of development scope
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "subjectId": "subject_agent",
+    "scopeId": "scope_development"
+  }'
+
+# NOT a member of production
+```
+
+```typescript
+// Agent tries to access production
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_production",  // Agent has no membership here
+  action: "read",
+  resource: { resourceType: "config" }
+});
+
+// Result: DENIED (agent has no membership in production)
+```
+
+### Pattern 3: Capability-Based Permissions
+
+Different agents have different capabilities:
+
+```bash
+# Code Review Agent - can read code, cannot execute
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Code Reviewer", "scopeId": "scope_org"}'
+
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_code_reviewer", "permissionId": "perm_code_read"},
+    {"roleId": "role_code_reviewer", "permissionId": "perm_pr_comment"}
+  ]'
+
+# Deployment Agent - can deploy, cannot modify code
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Deployer", "scopeId": "scope_org"}'
+
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_deployer", "permissionId": "perm_deploy_read"},
+    {"roleId": "role_deployer", "permissionId": "perm_deploy_execute"}
+  ]'
+```
+
+### Pattern 4: Override Agent Permissions in Sensitive Areas
+
+```bash
+# Disable agent write access in compliance scope
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_compliance",
+    "roleId": "role_agent_writer",
+    "permissionId": "perm_write",
+    "state": "disabled"
+  }'
+
+# Disable all agent access to PII
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -d '{
+    "childScopeId": "scope_pii",
+    "roleId": "role_agent_reader",
+    "state": "disabled"
+  }'
+```
+
+### Pattern 5: Time-Limited Agent Access
+
+Use conditional permissions for time-based restrictions:
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "execute",
+    "resourceType": "deployment",
+    "resourcePattern": "*",
+    "key": "deployment:execute:*:business-hours",
+    "logic": {
+      "and": [
+        {">=": [{"var": "context.hour"}, 9]},
+        {"<=": [{"var": "context.hour"}, 17]},
+        {"in": [{"var": "context.dayOfWeek"}, [1, 2, 3, 4, 5]]}
+      ]
+    }
+  }'
+```
+
+## MCP Server Integration
+
+For Model Context Protocol (MCP) servers:
+
+```typescript
+// MCP tool handler
+async function handleToolCall(toolName: string, args: any, context: MCPContext) {
+  const decision = await bedrock.evaluate({
+    actor: { 
+      subjectId: context.agentId, 
+      subjectType: "agent" 
+    },
+    onBehalfOf: { 
+      subjectId: context.userId, 
+      subjectType: "user" 
+    },
+    scopeId: context.scopeId,
+    action: toolName,
+    resource: { 
+      resourceType: "mcp-tool",
+      resourcePattern: toolName 
+    }
+  });
+
+  if (!decision.allowed) {
+    return {
+      error: "Unauthorized",
+      message: decision.explanation
+    };
+  }
+
+  return executeTool(toolName, args);
+}
+```
+
+## Audit Logging
+
+Always log delegation details:
+
+```typescript
+async function auditAgentAction(decision: BedrockDecision, action: string) {
+  await auditLog.write({
+    timestamp: new Date(),
+    action,
+    allowed: decision.allowed,
+    actor: {
+      id: decision.evaluatedActor?.subjectId,
+      type: decision.evaluatedActor?.subjectType
+    },
+    principal: {
+      id: decision.evaluatedOnBehalfOf?.subjectId,
+      type: decision.evaluatedOnBehalfOf?.subjectType
+    },
+    delegationUsed: decision.usedDelegation,
+    delegationId: decision.delegationId,
+    explanation: decision.explanation,
+    matchedPermissions: decision.matches.map(m => m.permission.key)
+  });
+}
+```
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="Principle of least privilege">
+    Give agents the minimum permissions needed. They can never exceed user permissions, but should be further restricted.
+  </Accordion>
+  <Accordion title="Separate agent roles">
+    Don't reuse user roles for agents. Create dedicated agent roles with appropriate restrictions.
+  </Accordion>
+  <Accordion title="Scope restrictions">
+    Limit agent memberships to necessary scopes. Don't add agents to production if they only need development access.
+  </Accordion>
+  <Accordion title="Override sensitive areas">
+    Use scope overrides to disable agent access in compliance, PII, or other sensitive areas.
+  </Accordion>
+  <Accordion title="Audit everything">
+    Log all agent actions with both actor and principal for complete audit trails.
+  </Accordion>
+  <Accordion title="Review agent permissions regularly">
+    Periodically audit agent roles and permissions to ensure they're still appropriate.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agent Governance Guide" icon="robot" href="/guides/agent-governance">
+    Complete guide to managing AI agents
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+    Fine-tune agent permissions with overrides
+  </Card>
+</CardGroup>

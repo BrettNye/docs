@@ -1,0 +1,231 @@
+---
+title: 'Roles'
+description: 'Named collections of permissions that can be assigned to subjects'
+icon: 'user-tag'
+---
+
+## What is a Role?
+
+A **role** is a named collection of permissions. Instead of assigning individual permissions to each subject, you create roles like "Editor" or "Admin" and assign those roles to subjects via their memberships.
+
+## Role Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `name` | `string` | Human-readable name (e.g., "Editor", "Admin") |
+| `description` | `string?` | What this role is for |
+| `scopeId` | `string` | The scope where this role is defined |
+
+## Creating Roles
+
+Roles are defined at a specific scope and can be used in that scope and all its descendants:
+
+```bash
+# Create an Editor role at the organization level
+curl -X POST 'https://api.example.com/roles' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Editor",
+    "description": "Can read and write documents",
+    "scopeId": "scope_acme"
+  }'
+```
+
+## Role Permissions
+
+A role is just a container—it has no permissions until you add them. Use **role permissions** to connect roles to permissions:
+
+```bash
+# First, create permissions
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"id": "perm_read", "scopeId": "scope_acme", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*"},
+    {"id": "perm_write", "scopeId": "scope_acme", "action": "write", "resourceType": "document", "resourcePattern": "*", "key": "document:write:*"}
+  ]'
+
+# Then, add permissions to the role
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_editor", "permissionId": "perm_read"},
+    {"roleId": "role_editor", "permissionId": "perm_write"}
+  ]'
+```
+
+## Role Assignments
+
+To grant a role to a subject, create a **role assignment** that links the role to a membership:
+
+```bash
+# Subject must have a membership first
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"id": "membership_jane", "subjectId": "subject_jane", "scopeId": "scope_engineering"}'
+
+# Then assign the role to the membership
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_editor", "membershipId": "membership_jane"}'
+```
+
+## Role Inheritance
+
+Roles defined at a parent scope are available in all child scopes:
+
+```
+Organization (defines: Admin, Editor, Viewer)
+    │
+    ├── Team A ─── can use Admin, Editor, Viewer
+    │   │
+    │   └── Project X ─── can use Admin, Editor, Viewer
+    │
+    └── Team B ─── can use Admin, Editor, Viewer
+```
+
+A subject with "Editor" at the Organization level has Editor permissions everywhere in that organization.
+
+## Scope-Specific Roles
+
+You can also define roles at child scopes for more specific use cases:
+
+```bash
+# Organization-wide roles
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Editor", "scopeId": "scope_acme"}'
+
+# Team-specific role
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Sprint Manager", "scopeId": "scope_engineering"}'
+
+# Project-specific role
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"name": "Release Approver", "scopeId": "scope_backend"}'
+```
+
+## Common Role Patterns
+
+### Standard RBAC Roles
+
+```bash
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Admin", "description": "Full access", "scopeId": "scope_org"},
+    {"name": "Editor", "description": "Read and write", "scopeId": "scope_org"},
+    {"name": "Viewer", "description": "Read only", "scopeId": "scope_org"}
+  ]'
+```
+
+### Agent-Specific Roles
+
+```bash
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Agent Reader", "description": "AI agent with read access", "scopeId": "scope_org"},
+    {"name": "Agent Writer", "description": "AI agent with write access", "scopeId": "scope_org"},
+    {"name": "Agent Executor", "description": "AI agent that can execute code", "scopeId": "scope_org"}
+  ]'
+```
+
+### Functional Roles
+
+```bash
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Billing Manager", "description": "Manage billing and invoices", "scopeId": "scope_org"},
+    {"name": "User Manager", "description": "Manage team members", "scopeId": "scope_org"},
+    {"name": "Auditor", "description": "View audit logs", "scopeId": "scope_org"}
+  ]'
+```
+
+## Role Overrides
+
+You can disable a role at a child scope using **role overrides**:
+
+```bash
+# Disable Admin role in production
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_admin",
+    "state": "disabled"
+  }'
+```
+
+Now subjects with the Admin role won't have admin access in production, even if they have it at the organization level.
+
+<Card title="Learn about Overrides" icon="sliders" href="/guides/scope-overrides">
+  See all override types and patterns
+</Card>
+
+## Multiple Roles per Membership
+
+A membership can have multiple roles:
+
+```bash
+# Jane has both Editor and Billing Manager roles
+curl -X POST 'https://api.example.com/role-assignments/batch' \
+  -d '[
+    {"roleId": "role_editor", "membershipId": "membership_jane"},
+    {"roleId": "role_billing_manager", "membershipId": "membership_jane"}
+  ]'
+```
+
+The subject's effective permissions are the **union** of all their roles' permissions.
+
+## Viewing Role Permissions
+
+```bash
+# Get all permissions for a role
+curl -X GET 'https://api.example.com/role-permissions?roleId=role_editor'
+```
+
+## Viewing Role Assignments
+
+```bash
+# Get all role assignments for a membership
+curl -X GET 'https://api.example.com/role-assignments?membershipId=membership_jane'
+
+# Get all role assignments for a role
+curl -X GET 'https://api.example.com/role-assignments?roleId=role_editor'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep roles focused">
+    Create roles for specific purposes rather than catch-all roles. "Billing Manager" is better than "Manager".
+  </Accordion>
+  <Accordion title="Define roles at the right level">
+    Organization-wide roles at the org level, team-specific roles at the team level.
+  </Accordion>
+  <Accordion title="Use descriptive names">
+    "Document Editor" is clearer than "Editor" if you have multiple resource types.
+  </Accordion>
+  <Accordion title="Document role purposes">
+    Use the `description` field to explain what each role is for.
+  </Accordion>
+  <Accordion title="Prefer roles over direct permissions">
+    Always assign permissions via roles, not directly to subjects.
+  </Accordion>
+</AccordionGroup>
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Role" icon="plus" href="/api-reference/roles/create-role">
+    Create a new role
+  </Card>
+  <Card title="Create Role Permission" icon="key" href="/api-reference/role-permissions/create-role-permission">
+    Add a permission to a role
+  </Card>
+  <Card title="Create Role Assignment" icon="user-tag" href="/api-reference/role-assignments/create-role-assignment">
+    Assign a role to a membership
+  </Card>
+  <Card title="Get Roles by Scope" icon="list" href="/api-reference/roles/get-roles-by-scope">
+    List roles in a scope
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Permissions" icon="arrow-right" href="/concepts/permissions">
+  Learn how permissions define specific access rights
+</Card>

@@ -1,0 +1,26 @@
+---
+title: 'Delete User'
+api: 'DELETE /users/{id}'
+description: 'Delete a user'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The user ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<Warning>
+  Deleting a user will also remove their tenant memberships and associated subject.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/users/user_jane' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

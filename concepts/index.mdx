@@ -1,0 +1,107 @@
+---
+title: 'Core Concepts'
+description: 'Understanding the fundamental building blocks of Bedrock authorization'
+icon: 'cube'
+---
+
+## Overview
+
+Bedrock is an authorization engine built around a few core primitives that compose together to create flexible, hierarchical access control. Understanding these concepts is essential before diving into implementation.
+
+<CardGroup cols={2}>
+  <Card title="Scopes" icon="sitemap" href="/concepts/scopes">
+    Hierarchical containers that define authorization boundaries
+  </Card>
+  <Card title="Scope Types" icon="layer-group" href="/concepts/scope-types">
+    Templates that define how scopes behave and inherit permissions
+  </Card>
+  <Card title="Subjects" icon="users" href="/concepts/subjects">
+    Entities that can be granted permissions (users, agents, services)
+  </Card>
+  <Card title="Roles" icon="user-tag" href="/concepts/roles">
+    Named collections of permissions assigned to subjects
+  </Card>
+  <Card title="Permissions" icon="key" href="/concepts/permissions">
+    Fine-grained access rights for actions on resources
+  </Card>
+  <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
+    How Bedrock decides if an action is allowed
+  </Card>
+</CardGroup>
+
+## The Bedrock Model
+
+At its core, Bedrock answers one question:
+
+> **Can this subject perform this action on this resource in this scope?**
+
+To answer this, Bedrock evaluates:
+
+1. **Subject** — Who is making the request? (user, agent, service)
+2. **Scope** — Where in the hierarchy is this happening?
+3. **Role** — What roles does the subject have in this scope?
+4. **Permission** — Do any of those roles grant the requested action?
+5. **Conditions** — Do any conditional rules (tags, metadata) apply?
+
+```
+Subject ──membership──▶ Scope
+                          │
+                          ▼
+                        Role ──has──▶ Permission
+                                          │
+                                          ▼
+                                    Action on Resource
+```
+
+## Key Relationships
+
+| Relationship | Description |
+|--------------|-------------|
+| **Subject → Scope** | A subject joins a scope via a **Membership** |
+| **Membership → Role** | A membership is assigned one or more **Roles** via **Role Assignments** |
+| **Role → Permission** | A role contains one or more **Permissions** via **Role Permissions** |
+| **Scope → Scope** | Scopes form a hierarchy via **Scope Hierarchy Edges** |
+| **Scope Type → Scope Type** | Scope types define valid parent-child relationships |
+
+## Permission Inheritance
+
+Permissions flow down the scope hierarchy:
+
+```
+Organization (defines: Admin, Editor, Viewer roles)
+    │
+    ├── Team A (inherits roles, can override)
+    │       │
+    │       └── Project X (inherits from Team A)
+    │
+    └── Team B (inherits roles, can override)
+            │
+            └── Project Y (inherits from Team B)
+```
+
+A subject with the "Editor" role at the Organization level has Editor permissions in all child scopes—unless an **override** modifies that behavior.
+
+## Overrides
+
+Bedrock supports three types of overrides to fine-tune inherited permissions:
+
+| Override Type | What it Controls |
+|---------------|------------------|
+| **Role Override** | Enable/disable an entire role at a child scope |
+| **Permission Override** | Enable/disable a specific permission at a child scope |
+| **Role-Permission Override** | Enable/disable a specific permission for a specific role |
+
+<Card title="Learn about Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+  See how to use overrides for fine-grained control
+</Card>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Scopes" icon="arrow-right" href="/concepts/scopes">
+    Start with scopes—the foundation of Bedrock's hierarchy
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Jump straight into building with Bedrock
+  </Card>
+</CardGroup>

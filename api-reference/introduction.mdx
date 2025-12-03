@@ -100,6 +100,8 @@ https://api.example.com
 
 ## API Groups
 
+### Core Authorization
+
 | Group | Description |
 |-------|-------------|
 | **Subjects** | Manage users, API keys, services, and agents |
@@ -115,4 +117,23 @@ https://api.example.com
 | **Scope Overrides** | Override inherited roles/permissions at child scopes |
 | **Resource Types** | Define categories of protected resources |
 | **Resources** | Manage protected objects within scopes |
-| **Tags** | Flexible metadata and categorization system |
+
+### Tags & Classification
+
+| Group | Description |
+|-------|-------------|
+| **Tag Groups** | Define categories of tags |
+| **Tags** | Create tags within groups |
+| **Tag Bindings** | Control which models can use which tag groups |
+| **Tag Assignments** | Assign tags to resources, subjects, etc. |
+
+### Management Models (Bedrock Cloud)
+
+| Group | Description |
+|-------|-------------|
+| **Tenants** | Customer accounts with billing and limits |
+| **Workspaces** | Logical groupings within tenants |
+| **Projects** | Applications or services within workspaces |
+| **Environments** | Deployment stages (prod, staging, dev) |
+| **Users** | Human users with IDP integration |
+| **API Keys** | Programmatic access credentials |

@@ -1,0 +1,53 @@
+---
+title: 'Get Users'
+api: 'GET /users'
+description: 'List users with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by user status. One of: `active`, `inactive`, `pending`, `suspended`
+</ParamField>
+
+<ParamField query="email" type="string">
+  Filter by email address
+</ParamField>
+
+<ParamField query="kindeId" type="string">
+  Filter by Kinde ID (external IDP)
+</ParamField>
+
+## Response
+
+Returns an array of user objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/users?status=active' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "user_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "subjectId": "subject_jane",
+    "kindeId": "kp_abc123",
+    "email": "jane@acme.com",
+    "emailVerified": true,
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "displayName": "Jane Doe",
+    "avatarUrl": "https://example.com/avatar.jpg",
+    "defaultTenantId": "tenant_acme",
+    "status": "active",
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z",
+    "lastLoginAt": "2024-01-20T14:00:00Z"
+  }
+]
+```
+</ResponseExample>

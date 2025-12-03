@@ -1,0 +1,338 @@
+---
+title: 'Permission Evaluation'
+description: 'How Bedrock decides if an action is allowed'
+icon: 'gears'
+---
+
+## Overview
+
+When your application asks "Can this subject do this action?", Bedrock's evaluation engine processes the request through a series of steps to produce a decision.
+
+## The Evaluation Input
+
+Every permission check requires an evaluation input:
+
+```typescript
+interface BedrockEvaluateInput {
+  actor: BedrockSubjectRef;        // Who is performing the action
+  onBehalfOf?: BedrockSubjectRef;  // Optional: acting on behalf of another subject
+  scopeId: string;                 // Where the action is happening
+  action: string;                  // What action is being performed
+  resource?: BedrockResourceRef;   // What resource is being accessed
+  context?: Record<string, unknown>; // Additional context for conditions
+  includeResourceTags?: boolean;   // Auto-load resource tags (default: true)
+}
+```
+
+### Basic Example
+
+```typescript
+const input = {
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "write",
+  resource: { resourceType: "document", resourcePattern: "*" }
+};
+
+const decision = await bedrock.evaluate(input);
+// { allowed: true, matches: [...], explanation: "..." }
+```
+
+## Evaluation Steps
+
+```
+1. Resolve Actor
+   └── Find subject, get memberships in scope hierarchy
+
+2. Collect Roles
+   └── Get role assignments for relevant memberships
+
+3. Gather Permissions
+   └── Get permissions from all assigned roles
+
+4. Apply Overrides
+   └── Process role, permission, and role-permission overrides
+
+5. Match Action & Resource
+   └── Filter to permissions matching the requested action/resource
+
+6. Evaluate Conditions
+   └── Run JSON Logic against context (if any)
+
+7. Return Decision
+   └── allowed: true/false + matching permissions + explanation
+```
+
+## The Decision Output
+
+```typescript
+interface BedrockDecision {
+  allowed: boolean;                    // Final result
+  matches: BedrockPermissionMatch[];   // Permissions that contributed
+  explanation?: string;                // Human-readable reason
+  usedDelegation?: boolean;            // Was onBehalfOf used?
+  delegationId?: string;               // Delegation reference if applicable
+  evaluatedActor?: BedrockSubjectRef;  // Echo of actor
+  evaluatedOnBehalfOf?: BedrockSubjectRef; // Echo of principal
+  evaluatedResource?: BedrockResource; // Resolved resource
+  evaluatedResourceType?: BedrockResourceType;
+  resourceTags?: BedrockTag[];         // Tags on the resource
+  evaluatedContext?: Record<string, unknown>; // Final context used
+}
+```
+
+## Step-by-Step Example
+
+Let's trace through a real evaluation:
+
+### Setup
+
+```
+Organization: Acme Corp
+├── Team: Engineering
+│   └── Project: Backend API
+│       └── Environment: Production
+
+Roles at Acme Corp:
+- Admin (permissions: read, write, delete, manage)
+- Editor (permissions: read, write)
+- Viewer (permissions: read)
+
+Jane has:
+- Membership in Engineering
+- Role assignment: Editor
+
+Override:
+- "write" permission disabled in Production
+```
+
+### Evaluation Request
+
+```typescript
+const input = {
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_production",  // Production environment
+  action: "write",
+  resource: { resourceType: "document", resourcePattern: "*" }
+};
+```
+
+### Evaluation Trace
+
+```
+1. Resolve Actor: subject_jane
+   └── Found membership in scope_engineering (parent of production)
+
+2. Collect Roles: 
+   └── role_editor (via membership_jane_eng)
+
+3. Gather Permissions:
+   └── perm_read (document:read:*)
+   └── perm_write (document:write:*)
+
+4. Apply Overrides:
+   └── Found: perm_write disabled in scope_production
+   └── Removing perm_write from effective permissions
+
+5. Match Action & Resource:
+   └── Looking for action="write", resourceType="document"
+   └── No matching permissions (perm_write was removed)
+
+6. Evaluate Conditions:
+   └── N/A (no matches)
+
+7. Return Decision:
+   └── allowed: false
+   └── explanation: "Permission 'write' is disabled in this scope"
+```
+
+## Delegation (On Behalf Of)
+
+Agents or services can act on behalf of users:
+
+```typescript
+const input = {
+  actor: { subjectId: "subject_agent", subjectType: "agent" },
+  onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceType: "document", resourcePattern: "*" }
+};
+```
+
+When `onBehalfOf` is provided:
+1. The actor must have the permission
+2. The principal (`onBehalfOf`) must also have the permission
+3. Both must pass for the action to be allowed
+
+```typescript
+const decision = await bedrock.evaluate(input);
+// decision.usedDelegation = true
+// decision.evaluatedActor = { subjectId: "subject_agent", ... }
+// decision.evaluatedOnBehalfOf = { subjectId: "subject_jane", ... }
+```
+
+## Resource-Based Evaluation
+
+When evaluating against a specific resource:
+
+```typescript
+const input = {
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: {
+    resourceId: "resource_doc_123",  // Specific resource
+    // OR
+    externalResourceId: "my-doc-123",
+    resourceType: "document"
+  },
+  includeResourceTags: true  // Load tags for conditional evaluation
+};
+```
+
+The engine will:
+1. Look up the resource
+2. Load its tags (if `includeResourceTags` is true)
+3. Include resource data in the evaluation context
+4. Evaluate any conditional permissions against this context
+
+## Conditional Evaluation
+
+Permissions with `logic` fields are evaluated against the context:
+
+```typescript
+// Permission with condition
+{
+  "action": "read",
+  "resourceType": "document",
+  "logic": {
+    "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
+  }
+}
+
+// Evaluation input
+const input = {
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_finance_report" },
+  context: {
+    subject: {
+      meta: { department: "Finance" }
+    }
+  }
+};
+
+// Resource has tag: departments = ["Finance", "Accounting"]
+// Condition evaluates: "Finance" in ["Finance", "Accounting"] = true
+// Result: allowed = true
+```
+
+## Context Variables
+
+The evaluation context includes:
+
+| Variable | Source | Example |
+|----------|--------|---------|
+| `subject.id` | Actor | `"subject_jane"` |
+| `subject.type` | Actor | `"user"` |
+| `subject.meta.*` | Actor metadata | `subject.meta.department` |
+| `resource.id` | Resource | `"resource_123"` |
+| `resource.type` | Resource type | `"document"` |
+| `resource.tags.*` | Resource tags | `resource.tags.departments` |
+| `context.*` | Custom context | `context.hour`, `context.ip` |
+
+## Bulk Evaluation
+
+Evaluate multiple permissions at once:
+
+```typescript
+const inputs = [
+  { actor, scopeId, action: "read", resource: { resourceType: "document" } },
+  { actor, scopeId, action: "write", resource: { resourceType: "document" } },
+  { actor, scopeId, action: "delete", resource: { resourceType: "document" } }
+];
+
+const decisions = await bedrock.evaluateBulk(inputs);
+// [{ allowed: true }, { allowed: true }, { allowed: false }]
+```
+
+## Effective Permissions
+
+Get all permissions a subject has in a scope:
+
+```typescript
+interface EffectivePermissionSummary {
+  resourceType: string;
+  action: string;
+  permissions: BedrockPermission[];
+  sourceRoles: BedrockRole[];
+}
+
+const summary = await bedrock.getEffectivePermissions({
+  subjectId: "subject_jane",
+  scopeId: "scope_engineering"
+});
+
+// [
+//   { resourceType: "document", action: "read", permissions: [...], sourceRoles: [...] },
+//   { resourceType: "document", action: "write", permissions: [...], sourceRoles: [...] }
+// ]
+```
+
+## Debugging Decisions
+
+The decision includes debugging information:
+
+```typescript
+const decision = await bedrock.evaluate(input);
+
+console.log(decision.explanation);
+// "Allowed via role 'Editor' which grants 'document:write:*'"
+
+console.log(decision.matches);
+// [{ permission: {...}, sourceRoleIds: ["role_editor"] }]
+
+console.log(decision.evaluatedContext);
+// { subject: {...}, resource: {...}, ... }
+```
+
+## Performance Considerations
+
+<AccordionGroup>
+  <Accordion title="Cache membership lookups">
+    Membership and role data changes infrequently. Cache it per-request or with short TTLs.
+  </Accordion>
+  <Accordion title="Use bulk evaluation">
+    When checking multiple permissions, use `evaluateBulk` instead of multiple single calls.
+  </Accordion>
+  <Accordion title="Minimize context size">
+    Only include context data needed for your conditional permissions.
+  </Accordion>
+  <Accordion title="Pre-compute effective permissions">
+    For UI rendering, fetch effective permissions once rather than checking each action individually.
+  </Accordion>
+</AccordionGroup>
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Evaluation API" icon="gears" href="/api-reference/evaluation">
+    Evaluate permission checks
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/api-reference/scope-overrides/get-role-overrides">
+    View and manage overrides
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Governance" icon="user-shield" href="/guides/user-governance">
+    Apply these concepts to user authorization
+  </Card>
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Apply these concepts to AI agent authorization
+  </Card>
+</CardGroup>

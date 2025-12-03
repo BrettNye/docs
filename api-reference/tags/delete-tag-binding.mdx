@@ -1,0 +1,22 @@
+---
+title: 'Delete Tag Group Binding'
+api: 'DELETE /tag-group-bindings/{id}'
+description: 'Remove a tag group binding'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The tag group binding ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/tag-group-bindings/tag_binding_001' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

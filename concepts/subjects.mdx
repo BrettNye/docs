@@ -1,0 +1,279 @@
+---
+title: 'Subjects'
+description: 'Entities that can be granted permissions—users, agents, services, and more'
+icon: 'users'
+---
+
+## What is a Subject?
+
+A **subject** is any entity that can be granted permissions in Bedrock. This includes humans, AI agents, services, and system processes. Bedrock's unified subject model means you manage all of these with the same APIs and concepts.
+
+## Subject Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique Bedrock identifier |
+| `subjectType` | `SubjectTypeEnum` | Type of subject: `user`, `agent`, `service`, `system` |
+| `externalId` | `string` | Your system's identifier (e.g., user ID from your auth provider) |
+| `displayName` | `string?` | Human-readable name |
+| `meta` | `Record<string, unknown>?` | Custom metadata |
+
+## Subject Types
+
+### User
+
+Human users authenticated through your identity provider.
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "auth0|123456",
+    "displayName": "Jane Doe",
+    "meta": {
+      "email": "jane@example.com",
+      "department": "Engineering"
+    }
+  }'
+```
+
+### Agent
+
+AI agents, LLM-powered assistants, or autonomous workflows.
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "agent",
+    "externalId": "coding-assistant-v2",
+    "displayName": "Coding Assistant",
+    "meta": {
+      "model": "claude-3",
+      "capabilities": ["code-review", "documentation"],
+      "owner": "engineering-team"
+    }
+  }'
+```
+
+### Service
+
+Backend services, APIs, or microservices that need to perform authorized actions.
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "service",
+    "externalId": "billing-service",
+    "displayName": "Billing Service",
+    "meta": {
+      "version": "2.1.0",
+      "environment": "production"
+    }
+  }'
+```
+
+### System
+
+Internal system processes, cron jobs, or platform-level operations.
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "system",
+    "externalId": "nightly-cleanup",
+    "displayName": "Nightly Cleanup Job"
+  }'
+```
+
+## Memberships
+
+A **membership** connects a subject to a scope. Without a membership, a subject has no access to a scope.
+
+```bash
+# Add Jane to the Engineering team
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "subjectId": "subject_jane",
+    "scopeId": "scope_engineering"
+  }'
+```
+
+### Membership Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique membership identifier |
+| `subjectId` | `string` | The subject being added |
+| `scopeId` | `string` | The scope they're joining |
+
+<Note>
+  A membership alone doesn't grant permissions—you must also assign roles to the membership.
+</Note>
+
+## Role Assignments
+
+After creating a membership, assign roles to grant permissions:
+
+```bash
+# Assign the Editor role to Jane's membership
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_editor",
+    "membershipId": "membership_jane_eng"
+  }'
+```
+
+## Complete Example: Adding a User
+
+```bash
+# 1. Create the subject
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "id": "subject_jane",
+    "subjectType": "user",
+    "externalId": "user-jane-doe",
+    "displayName": "Jane Doe"
+  }'
+
+# 2. Create membership in a scope
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "id": "membership_jane_eng",
+    "subjectId": "subject_jane",
+    "scopeId": "scope_engineering"
+  }'
+
+# 3. Assign a role
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_editor",
+    "membershipId": "membership_jane_eng"
+  }'
+```
+
+Jane now has Editor permissions in the Engineering scope and all its descendants.
+
+## Complete Example: Adding an AI Agent
+
+```bash
+# 1. Create the agent subject
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "id": "subject_assistant",
+    "subjectType": "agent",
+    "externalId": "code-review-agent",
+    "displayName": "Code Review Agent",
+    "meta": {"model": "claude-3", "purpose": "code-review"}
+  }'
+
+# 2. Add to Engineering scope
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "id": "membership_assistant_eng",
+    "subjectId": "subject_assistant",
+    "scopeId": "scope_engineering"
+  }'
+
+# 3. Assign a restricted role (Viewer, not Editor)
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_viewer",
+    "membershipId": "membership_assistant_eng"
+  }'
+```
+
+The agent can now read in Engineering but cannot write.
+
+## External IDs
+
+Use `externalId` to map Bedrock subjects to your existing user/service identifiers:
+
+```bash
+# Create subject with external ID
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "auth0|abc123",
+    "displayName": "Jane Doe"
+  }'
+
+# Look up by external ID
+curl -X GET 'https://api.example.com/subjects/external/auth0|abc123'
+```
+
+This allows you to:
+- Sync users from your identity provider
+- Reference subjects by your system's IDs
+- Avoid storing Bedrock IDs in your application
+
+## Subject Metadata
+
+Store custom data on subjects for use in conditional permissions:
+
+```bash
+curl -X POST 'https://api.example.com/subjects' \
+  -d '{
+    "subjectType": "user",
+    "externalId": "jane-doe",
+    "displayName": "Jane Doe",
+    "meta": {
+      "department": "Engineering",
+      "clearanceLevel": "secret",
+      "certifications": ["aws-sa", "k8s-admin"],
+      "hireDate": "2023-01-15"
+    }
+  }'
+```
+
+Metadata can be used in permission conditions:
+
+```json
+{
+  "logic": {
+    ">=": [{"var": "subject.meta.clearanceLevel"}, "secret"]
+  }
+}
+```
+
+## Multiple Memberships
+
+A subject can belong to multiple scopes with different roles:
+
+```bash
+# Jane is an Editor in Engineering
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "subject_jane", "scopeId": "scope_engineering"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_editor", "membershipId": "membership_jane_eng"}'
+
+# Jane is a Viewer in Sales (cross-functional visibility)
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{"subjectId": "subject_jane", "scopeId": "scope_sales"}'
+
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{"roleId": "role_viewer", "membershipId": "membership_jane_sales"}'
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Subject" icon="user-plus" href="/api-reference/subjects/create-subject">
+    Create a new subject
+  </Card>
+  <Card title="Create Membership" icon="link" href="/api-reference/memberships/create-membership">
+    Add a subject to a scope
+  </Card>
+  <Card title="Create Role Assignment" icon="user-tag" href="/api-reference/role-assignments/create-role-assignment">
+    Assign a role to a membership
+  </Card>
+  <Card title="Get by External ID" icon="search" href="/api-reference/subjects/get-subjects-by-external">
+    Look up subjects by external ID
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Roles" icon="arrow-right" href="/concepts/roles">
+  Learn how roles bundle permissions together
+</Card>

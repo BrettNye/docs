@@ -1,0 +1,302 @@
+---
+title: 'Permissions'
+description: 'Fine-grained access rights for actions on resources'
+icon: 'key'
+---
+
+## What is a Permission?
+
+A **permission** defines a specific access right: the ability to perform an **action** on a **resource type** matching a **pattern**. Permissions are the atomic units of access control in Bedrock.
+
+## Permission Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `scopeId` | `string` | Scope where this permission is defined |
+| `action` | `string` | The action being permitted (e.g., `read`, `write`, `delete`) |
+| `resourceType` | `string` | Type of resource (e.g., `document`, `project`, `user`) |
+| `resourcePattern` | `string` | Pattern matching specific resources (`*` for all) |
+| `key` | `string` | Derived unique key: `{resourceType}:{action}:{resourcePattern}` |
+| `label` | `string?` | Human-readable name |
+| `description` | `string?` | What this permission allows |
+| `logic` | `Record<string, unknown>?` | Conditional rules (JSON Logic) |
+
+## Creating Permissions
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_acme",
+    "action": "write",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:write:*",
+    "label": "Write Documents",
+    "description": "Create and update any document"
+  }'
+```
+
+## Permission Keys
+
+The `key` field uniquely identifies a permission within a scope. The convention is:
+
+```
+{resourceType}:{action}:{resourcePattern}
+```
+
+Examples:
+- `document:read:*` — Read any document
+- `document:write:*` — Write any document
+- `document:delete:*` — Delete any document
+- `user:manage:*` — Manage any user
+- `report:export:financial` — Export financial reports
+
+## Actions
+
+Actions describe what can be done. Common patterns:
+
+### CRUD Actions
+```bash
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "create", "resourceType": "document", "resourcePattern": "*", "key": "document:create:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*"},
+    {"scopeId": "scope_org", "action": "update", "resourceType": "document", "resourcePattern": "*", "key": "document:update:*"},
+    {"scopeId": "scope_org", "action": "delete", "resourceType": "document", "resourcePattern": "*", "key": "document:delete:*"}
+  ]'
+```
+
+### Domain-Specific Actions
+```bash
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "approve", "resourceType": "expense", "resourcePattern": "*", "key": "expense:approve:*"},
+    {"scopeId": "scope_org", "action": "submit", "resourceType": "timesheet", "resourcePattern": "*", "key": "timesheet:submit:*"},
+    {"scopeId": "scope_org", "action": "execute", "resourceType": "code", "resourcePattern": "*", "key": "code:execute:*"},
+    {"scopeId": "scope_org", "action": "export", "resourceType": "report", "resourcePattern": "*", "key": "report:export:*"}
+  ]'
+```
+
+## Resource Types
+
+Resource types categorize what the permission applies to:
+
+```bash
+# Different resource types
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "project", "resourcePattern": "*", "key": "project:read:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "user", "resourcePattern": "*", "key": "user:read:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "billing", "resourcePattern": "*", "key": "billing:read:*"}
+  ]'
+```
+
+## Resource Patterns
+
+Patterns specify which resources the permission applies to:
+
+| Pattern | Meaning |
+|---------|---------|
+| `*` | All resources of this type |
+| `{id}` | A specific resource by ID |
+| `owned` | Resources owned by the subject |
+| `{category}/*` | Resources in a category |
+
+```bash
+# Wildcard: all documents
+{"resourcePattern": "*", "key": "document:read:*"}
+
+# Specific resource
+{"resourcePattern": "doc-123", "key": "document:read:doc-123"}
+
+# Category pattern
+{"resourcePattern": "financial/*", "key": "document:read:financial/*"}
+```
+
+## Conditional Permissions
+
+Use the `logic` field to add conditions using JSON Logic:
+
+### Based on Subject Metadata
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "classified",
+    "resourcePattern": "*",
+    "key": "classified:read:*",
+    "label": "Read Classified Documents",
+    "logic": {
+      ">=": [{"var": "subject.meta.clearanceLevel"}, 3]
+    }
+  }'
+```
+
+### Based on Resource Tags
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:*:dept-match",
+    "label": "Read Department Documents",
+    "logic": {
+      "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
+    }
+  }'
+```
+
+### Time-Based Conditions
+
+```bash
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "access",
+    "resourceType": "system",
+    "resourcePattern": "*",
+    "key": "system:access:*:business-hours",
+    "label": "Access During Business Hours",
+    "logic": {
+      "and": [
+        {">=": [{"var": "context.hour"}, 9]},
+        {"<=": [{"var": "context.hour"}, 17]}
+      ]
+    }
+  }'
+```
+
+## Permission Inheritance
+
+Permissions defined at a parent scope are available in all child scopes:
+
+```
+Organization (defines document:read:*, document:write:*)
+    │
+    ├── Team A ─── inherits document:read:*, document:write:*
+    │   │
+    │   └── Project X ─── inherits document:read:*, document:write:*
+```
+
+## Permission Overrides
+
+You can disable a permission at a child scope:
+
+```bash
+# Disable delete permission in production
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+Or disable a permission for a specific role:
+
+```bash
+# Editors can't delete in archived projects
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_archived",
+    "roleId": "role_editor",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+## Connecting Permissions to Roles
+
+Permissions are granted to subjects through roles:
+
+```bash
+# Create permissions
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"id": "perm_doc_read", "scopeId": "scope_org", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*"},
+    {"id": "perm_doc_write", "scopeId": "scope_org", "action": "write", "resourceType": "document", "resourcePattern": "*", "key": "document:write:*"}
+  ]'
+
+# Create role
+curl -X POST 'https://api.example.com/roles' \
+  -d '{"id": "role_editor", "name": "Editor", "scopeId": "scope_org"}'
+
+# Connect permissions to role
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_editor", "permissionId": "perm_doc_read"},
+    {"roleId": "role_editor", "permissionId": "perm_doc_write"}
+  ]'
+```
+
+## Common Permission Patterns
+
+### Tiered Access
+
+```bash
+# Viewer: read only
+{"roleId": "role_viewer", "permissionId": "perm_read"}
+
+# Editor: read + write
+{"roleId": "role_editor", "permissionId": "perm_read"}
+{"roleId": "role_editor", "permissionId": "perm_write"}
+
+# Admin: read + write + delete + manage
+{"roleId": "role_admin", "permissionId": "perm_read"}
+{"roleId": "role_admin", "permissionId": "perm_write"}
+{"roleId": "role_admin", "permissionId": "perm_delete"}
+{"roleId": "role_admin", "permissionId": "perm_manage"}
+```
+
+### Agent Restrictions
+
+```bash
+# Agents can read but not write
+{"roleId": "role_agent", "permissionId": "perm_read"}
+# No write permission for agents
+
+# Agents can never execute code
+# Don't add perm_execute to any agent role
+```
+
+### Feature Flags as Permissions
+
+```bash
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "use", "resourceType": "feature", "resourcePattern": "beta-dashboard", "key": "feature:use:beta-dashboard"},
+    {"scopeId": "scope_org", "action": "use", "resourceType": "feature", "resourcePattern": "ai-assistant", "key": "feature:use:ai-assistant"},
+    {"scopeId": "scope_org", "action": "use", "resourceType": "feature", "resourcePattern": "advanced-analytics", "key": "feature:use:advanced-analytics"}
+  ]'
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Permission" icon="plus" href="/api-reference/permissions/create-permission">
+    Create a new permission
+  </Card>
+  <Card title="Get Permissions by Scope" icon="list" href="/api-reference/permissions/get-permissions-by-scope">
+    List permissions in a scope
+  </Card>
+  <Card title="Create Role Permission" icon="link" href="/api-reference/role-permissions/create-role-permission">
+    Add permission to a role
+  </Card>
+  <Card title="Permission Overrides" icon="sliders" href="/api-reference/scope-overrides/create-permission-override">
+    Override permissions at child scopes
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Evaluation" icon="arrow-right" href="/concepts/evaluation">
+  Learn how Bedrock evaluates permission checks
+</Card>

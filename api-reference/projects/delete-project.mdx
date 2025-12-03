@@ -1,0 +1,26 @@
+---
+title: 'Delete Project'
+api: 'DELETE /projects/{id}'
+description: 'Delete a project'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The project ID to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<Warning>
+  Deleting a project will also delete all associated environments.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/projects/project_api' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>

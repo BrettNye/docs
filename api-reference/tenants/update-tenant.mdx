@@ -1,0 +1,93 @@
+---
+title: 'Update Tenant'
+api: 'PATCH /tenants/{id}'
+description: 'Update a tenant'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The tenant ID to update
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField body="name" type="string">
+  Display name
+</ParamField>
+
+<ParamField body="billingEmail" type="string">
+  Billing email
+</ParamField>
+
+<ParamField body="technicalContactEmail" type="string">
+  Technical contact email
+</ParamField>
+
+<ParamField body="planKey" type="string">
+  Subscription plan key
+</ParamField>
+
+<ParamField body="status" type="string">
+  Tenant status. One of: `active`, `suspended`, `pending`
+</ParamField>
+
+<ParamField body="maxUsers" type="number">
+  Maximum users
+</ParamField>
+
+<ParamField body="maxWorkspaces" type="number">
+  Maximum workspaces
+</ParamField>
+
+<ParamField body="logoUrl" type="string">
+  Logo URL
+</ParamField>
+
+<ParamField body="primaryColor" type="string">
+  Primary brand color
+</ParamField>
+
+<ParamField body="settings" type="object">
+  Tenant settings
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Custom metadata
+</ParamField>
+
+## Response
+
+Returns the updated tenant object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/tenants/tenant_acme' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "planKey": "enterprise",
+    "maxUsers": 200,
+    "maxWorkspaces": 50
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tenant_acme",
+  "name": "Acme Corp",
+  "kind": "standard",
+  "scopeId": "scope_acme",
+  "slug": "acme-corp",
+  "planKey": "enterprise",
+  "status": "active",
+  "maxUsers": 200,
+  "maxWorkspaces": 50,
+  "updatedAt": "2024-01-16T10:30:00Z"
+}
+```
+</ResponseExample>

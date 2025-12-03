@@ -1,0 +1,234 @@
+---
+title: 'Multi-Scope Resources'
+description: 'Share and classify resources across multiple scopes'
+icon: 'share-nodes'
+---
+
+## What are Multi-Scope Resources?
+
+By default, a resource belongs to a single scope (its owner). **Multi-scope resources** allow you to associate a resource with additional scopes for sharing, classification, or cross-team visibility—without changing ownership or access control.
+
+<Note>
+  Resource scopes are for **classification and sharing**, not access control. Access is still determined by permissions, roles, and the evaluation engine.
+</Note>
+
+## Resource Scope Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier for this association |
+| `resourceId` | `string` | The resource being shared |
+| `scopeId` | `string` | Additional scope to associate with |
+
+## Use Cases
+
+### Cross-Team Visibility
+
+A document owned by Engineering needs to be visible to Sales:
+
+```bash
+# Document owned by Engineering
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_document",
+    "scopeId": "scope_engineering",  # Owner
+    "externalResourceId": "doc-123",
+    "displayName": "Product Roadmap"
+  }'
+
+# Share with Sales team
+curl -X POST 'https://api.example.com/resource-scopes' \
+  -d '{
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_sales"
+  }'
+```
+
+Now the document appears in both Engineering and Sales contexts.
+
+### Department Classification
+
+Classify resources by department for filtering and reporting:
+
+```bash
+# Create a report
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_report",
+    "scopeId": "scope_org",
+    "externalResourceId": "report-q4",
+    "displayName": "Q4 Financial Report"
+  }'
+
+# Associate with Finance department
+curl -X POST 'https://api.example.com/resource-scopes' \
+  -d '{"resourceId": "resource_report_q4", "scopeId": "scope_finance"}'
+
+# Also associate with Executive team
+curl -X POST 'https://api.example.com/resource-scopes' \
+  -d '{"resourceId": "resource_report_q4", "scopeId": "scope_executive"}'
+```
+
+### Project Collaboration
+
+A shared component used by multiple projects:
+
+```bash
+# Shared library owned by Platform team
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_library",
+    "scopeId": "scope_platform",
+    "externalResourceId": "lib-auth",
+    "displayName": "Auth Library"
+  }'
+
+# Share with consuming projects
+curl -X POST 'https://api.example.com/resource-scopes/batch' \
+  -d '[
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_a"},
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_b"},
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_c"}
+  ]'
+```
+
+## Querying Multi-Scope Resources
+
+### Get Resources in a Scope
+
+Returns resources owned by OR associated with the scope:
+
+```bash
+curl -X GET 'https://api.example.com/resources?scopeId=scope_sales'
+# Returns: owned resources + shared resources
+```
+
+### Get Resource's Scopes
+
+See all scopes a resource is associated with:
+
+```bash
+curl -X GET 'https://api.example.com/resources/resource_doc_123/scopes'
+# Returns: [scope_engineering (owner), scope_sales (shared)]
+```
+
+## Access Control Considerations
+
+Multi-scope associations do **not** automatically grant access. You still need:
+
+1. **Membership** — Subject must be a member of a relevant scope
+2. **Role** — Subject must have a role with appropriate permissions
+3. **Permission** — The role must include the required permission
+
+```typescript
+// Jane is in Sales with Viewer role
+// Document is shared with Sales
+// Jane can read the document IF:
+// - Sales scope has "document:read:*" permission
+// - Viewer role includes that permission
+
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_sales",
+  action: "read",
+  resource: { resourceId: "resource_doc_123" }
+});
+```
+
+## Patterns
+
+### Pattern 1: Shared Resources Library
+
+Create a "shared" scope for cross-team resources:
+
+```bash
+# Create shared resources scope
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"typeId": "scope_type_shared", "name": "Shared Resources"}'
+
+# Resources that need cross-team access go here
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_template",
+    "scopeId": "scope_shared",
+    "externalResourceId": "template-invoice",
+    "displayName": "Invoice Template"
+  }'
+```
+
+### Pattern 2: Matrix Organization
+
+Resources belong to both functional and project scopes:
+
+```bash
+# Engineer's work belongs to their team AND their project
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_design_doc",
+    "scopeId": "scope_backend_team",  # Functional owner
+    "externalResourceId": "design-api-v2"
+  }'
+
+# Also associate with the project
+curl -X POST 'https://api.example.com/resource-scopes' \
+  -d '{
+    "resourceId": "resource_design_api_v2",
+    "scopeId": "scope_project_alpha"  # Project association
+  }'
+```
+
+### Pattern 3: Compliance Zones
+
+Mark resources as belonging to compliance-controlled areas:
+
+```bash
+# PII data resource
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_customer_data",
+    "scopeId": "scope_crm",
+    "externalResourceId": "customers-export"
+  }'
+
+# Mark as HIPAA-controlled
+curl -X POST 'https://api.example.com/resource-scopes' \
+  -d '{
+    "resourceId": "resource_customers_export",
+    "scopeId": "scope_hipaa_zone"
+  }'
+```
+
+Then use scope-based overrides to restrict access in HIPAA zones.
+
+## Removing Associations
+
+```bash
+# Remove a scope association
+curl -X DELETE 'https://api.example.com/resource-scopes/rs_123'
+
+# Remove by resource and scope
+curl -X DELETE 'https://api.example.com/resource-scopes?resourceId=resource_doc_123&scopeId=scope_sales'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use for classification, not access">
+    Multi-scope is for organizing and sharing, not for granting permissions. Use roles and permissions for access control.
+  </Accordion>
+  <Accordion title="Keep associations meaningful">
+    Only associate resources with scopes where they're genuinely relevant.
+  </Accordion>
+  <Accordion title="Consider using tags instead">
+    For simple classification (e.g., "finance", "confidential"), tags may be simpler than scope associations.
+  </Accordion>
+  <Accordion title="Document your patterns">
+    Make it clear to your team when to use multi-scope vs. tags vs. resource hierarchies.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<Card title="Tags" icon="arrow-right" href="/tags/index">
+  Learn about tagging resources for flexible classification
+</Card>

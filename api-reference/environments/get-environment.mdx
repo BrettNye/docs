@@ -1,0 +1,34 @@
+---
+title: 'Get Environment'
+api: 'GET /environments/{id}'
+description: 'Get an environment by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The environment ID
+</ParamField>
+
+## Response
+
+Returns the environment object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/environments/environment_prod' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "environment_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tenantId": "tenant_acme",
+  "projectId": "project_api",
+  "scopeId": "scope_env_prod",
+  "name": "Production"
+}
+```
+</ResponseExample>

@@ -1,0 +1,52 @@
+---
+title: 'Get Tenant'
+api: 'GET /tenants/{id}'
+description: 'Get a tenant by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The tenant ID
+</ParamField>
+
+## Response
+
+Returns the tenant object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/tenants/tenant_acme' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tenant_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "name": "Acme Corp",
+  "kind": "standard",
+  "scopeId": "scope_acme",
+  "slug": "acme-corp",
+  "externalId": "stripe_cus_123",
+  "ownerUserId": "user_jane",
+  "billingEmail": "billing@acme.com",
+  "technicalContactEmail": "tech@acme.com",
+  "planKey": "pro",
+  "status": "active",
+  "billingProvider": "stripe",
+  "billingCustomerRef": "cus_123",
+  "maxUsers": 50,
+  "maxWorkspaces": 10,
+  "maxProjects": 100,
+  "maxEnvironments": 400,
+  "logoUrl": "https://acme.com/logo.png",
+  "primaryColor": "#FF5733",
+  "settings": {},
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z",
+  "metadata": {}
+}
+```
+</ResponseExample>

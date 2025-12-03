@@ -1,0 +1,95 @@
+---
+title: 'Create Tag Assignments (Batch)'
+api: 'POST /tag-assignments/batch'
+description: 'Assign multiple tags to targets in a single request'
+---
+
+## Request Body
+
+Array of tag assignment objects.
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID
+</ParamField>
+
+<ParamField body="[].tagId" type="string" required>
+  ID of the tag to assign
+</ParamField>
+
+<ParamField body="[].targetType" type="string" required>
+  Type of target. One of: `resource`, `subject`, `role`, `permission`
+</ParamField>
+
+<ParamField body="[].targetId" type="string" required>
+  ID of the target entity
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  Scope context for this assignment
+</ParamField>
+
+## Response
+
+Returns an array of created tag assignment objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tag-assignments/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "tagId": "tag_engineering",
+      "targetType": "subject",
+      "targetId": "subject_jane",
+      "scopeId": "scope_acme"
+    },
+    {
+      "tagId": "tag_backend",
+      "targetType": "subject",
+      "targetId": "subject_jane",
+      "scopeId": "scope_acme"
+    },
+    {
+      "tagId": "tag_engineering",
+      "targetType": "resource",
+      "targetId": "resource_doc_123",
+      "scopeId": "scope_acme"
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tag_assignment_001",
+    "tagId": "tag_engineering",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme",
+    "appliedBy": "subject_admin",
+    "appliedAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_assignment_002",
+    "tagId": "tag_backend",
+    "targetType": "subject",
+    "targetId": "subject_jane",
+    "scopeId": "scope_acme",
+    "appliedBy": "subject_admin",
+    "appliedAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "tag_assignment_003",
+    "tagId": "tag_engineering",
+    "targetType": "resource",
+    "targetId": "resource_doc_123",
+    "scopeId": "scope_acme",
+    "appliedBy": "subject_admin",
+    "appliedAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

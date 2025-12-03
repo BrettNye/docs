@@ -1,0 +1,277 @@
+---
+title: 'Modeling Multi-Tenant SaaS'
+description: 'Authorization patterns for multi-tenant SaaS applications'
+icon: 'building'
+---
+
+## Overview
+
+Multi-tenant SaaS applications need complete isolation between customers while sharing infrastructure. This guide shows how to model tenant isolation, workspace hierarchies, and project-level authorization in Bedrock.
+
+## The Bedrock Cloud Hierarchy
+
+Bedrock Cloud uses a four-level hierarchy for customer tenants:
+
+```
+Tenant (customer boundary)
+└── Workspace (logical grouping)
+    └── Project (where authorization is configured)
+        └── Environment (prod/staging/dev)
+```
+
+<Note>
+  The **Project** level is where scope types, roles, and permissions are defined. Each project can have its own authorization model tailored to the application it represents.
+</Note>
+
+## Understanding the Hierarchy
+
+| Level | Purpose | Permission Mode |
+|-------|---------|----------------|
+| **Tenant** | Customer boundary, billing, user limits | `define` (isolation) |
+| **Workspace** | Logical grouping of projects | `merge` |
+| **Project** | Authorization configuration home | `merge` |
+| **Environment** | Deployment stage | `merge` |
+
+## Step 1: Create a Tenant
+
+Tenants are created via the Management API. Each tenant automatically gets an associated scope:
+
+```bash
+curl -X POST 'https://api.example.com/tenants' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -d '{
+    "name": "Acme Corp",
+    "slug": "acme-corp",
+    "kind": "standard",
+    "planKey": "pro",
+    "billingEmail": "billing@acme.com",
+    "maxUsers": 50,
+    "maxWorkspaces": 10
+  }'
+```
+
+Response includes the tenant's scope ID:
+```json
+{
+  "id": "tenant_acme",
+  "scopeId": "scope_tenant_acme",
+  "name": "Acme Corp",
+  ...
+}
+```
+
+## Step 2: Create Workspaces and Projects
+
+Use the Management API to build out the tenant's structure:
+
+```bash
+# Create a workspace
+curl -X POST 'https://api.example.com/workspaces' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "name": "Engineering"
+  }'
+
+# Create projects within the workspace
+curl -X POST 'https://api.example.com/projects' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "workspaceId": "workspace_engineering",
+    "name": "API Service"
+  }'
+
+curl -X POST 'https://api.example.com/projects' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "workspaceId": "workspace_engineering",
+    "name": "Web App"
+  }'
+
+# Create environments within projects
+curl -X POST 'https://api.example.com/environments' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "projectId": "project_api",
+    "name": "Production"
+  }'
+
+curl -X POST 'https://api.example.com/environments' \
+  -d '{
+    "tenantId": "tenant_acme",
+    "projectId": "project_api",
+    "name": "Staging"
+  }'
+```
+
+The Management API automatically creates scopes and links them in the hierarchy.
+
+## Step 3: Define Project-Level Authorization
+
+Roles, permissions, and scope types are defined at the **Project** level. This allows each project to have its own authorization model:
+
+```bash
+# Define roles for the API Service project
+curl -X POST 'https://api.example.com/roles/batch' \
+  -d '[
+    {"name": "Admin", "description": "Full project access", "scopeId": "scope_project_api"},
+    {"name": "Developer", "description": "Read and write code", "scopeId": "scope_project_api"},
+    {"name": "Viewer", "description": "Read only", "scopeId": "scope_project_api"}
+  ]'
+
+# Define permissions for the project
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_project_api", "action": "manage", "resourceType": "*", "resourcePattern": "*", "key": "*:manage:*"},
+    {"scopeId": "scope_project_api", "action": "read", "resourceType": "*", "resourcePattern": "*", "key": "*:read:*"},
+    {"scopeId": "scope_project_api", "action": "write", "resourceType": "*", "resourcePattern": "*", "key": "*:write:*"},
+    {"scopeId": "scope_project_api", "action": "delete", "resourceType": "*", "resourcePattern": "*", "key": "*:delete:*"},
+    {"scopeId": "scope_project_api", "action": "deploy", "resourceType": "environment", "resourcePattern": "*", "key": "environment:deploy:*"}
+  ]'
+
+# Connect permissions to roles
+curl -X POST 'https://api.example.com/role-permissions/batch' \
+  -d '[
+    {"roleId": "role_admin", "permissionId": "perm_manage"},
+    {"roleId": "role_admin", "permissionId": "perm_read"},
+    {"roleId": "role_admin", "permissionId": "perm_write"},
+    {"roleId": "role_admin", "permissionId": "perm_delete"},
+    {"roleId": "role_admin", "permissionId": "perm_deploy"},
+    {"roleId": "role_developer", "permissionId": "perm_read"},
+    {"roleId": "role_developer", "permissionId": "perm_write"},
+    {"roleId": "role_viewer", "permissionId": "perm_read"}
+  ]'
+```
+
+<Note>
+  Roles and permissions defined at the project level are inherited by all environments within that project.
+</Note>
+
+## Step 4: Add Users to Projects
+
+Users are added to the tenant, then given memberships and roles at the project level:
+
+```bash
+# Create a user (via Management API)
+curl -X POST 'https://api.example.com/users' \
+  -d '{
+    "kindeId": "kp_jane123",
+    "email": "jane@acme.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "defaultTenantId": "tenant_acme"
+  }'
+
+# Add user to the project scope
+curl -X POST 'https://api.example.com/memberships' \
+  -d '{
+    "subjectId": "subject_jane",
+    "scopeId": "scope_project_api"
+  }'
+
+# Assign the Developer role
+curl -X POST 'https://api.example.com/role-assignments' \
+  -d '{
+    "roleId": "role_developer",
+    "membershipId": "membership_jane_api"
+  }'
+```
+
+Jane now has Developer permissions in the API Service project and all its environments.
+
+## Tenant Isolation
+
+Tenants are completely isolated. Users in one tenant cannot access another tenant's resources:
+
+```typescript
+// Jane (Acme user) tries to access a Globex project
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_project_globex_api",  // Different tenant's project
+  action: "read",
+  resource: { resourceType: "document" }
+});
+
+// Result: DENIED
+// Jane has no membership in any Globex scope
+```
+
+## Environment Overrides
+
+Restrict production access using scope overrides:
+
+```bash
+# Disable delete in production environment
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_env_production",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+
+# Disable deploy for Developers in production (only Admins can deploy)
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_env_production",
+    "roleId": "role_developer",
+    "permissionId": "perm_deploy",
+    "state": "disabled"
+  }'
+```
+
+Now Developers can deploy to Staging but not Production.
+
+## Project-Specific Scope Types
+
+Projects can define custom scope types for their domain:
+
+```bash
+# Define custom scope types for a construction project
+curl -X POST 'https://api.example.com/scope-types/batch' \
+  -d '[
+    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
+    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
+  ]'
+
+# Define the hierarchy within the project
+curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
+  -d '[
+    {"parentTypeId": "type_environment", "childTypeId": "type_jobsite"},
+    {"parentTypeId": "type_jobsite", "childTypeId": "type_crew"}
+  ]'
+```
+
+This allows the construction project to have:
+```
+Project (API Service)
+└── Environment (Production)
+    └── Job Site (Downtown Tower)
+        └── Crew (Electrical Team)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Define authorization at the Project level">
+    Projects are the home for roles, permissions, and custom scope types. This keeps authorization configuration close to the application it serves.
+  </Accordion>
+  <Accordion title="Use environment overrides for production">
+    Apply overrides to production environments to restrict dangerous operations like delete or deploy.
+  </Accordion>
+  <Accordion title="Map external IDs">
+    Use `externalId` on tenants and scopes to map to your billing/CRM systems.
+  </Accordion>
+  <Accordion title="Keep workspace structure simple">
+    Workspaces are for logical grouping. Don't over-complicate—most tenants need just one or two workspaces.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Modeling Organizations" icon="sitemap" href="/guides/modeling-organizations">
+    Model org structures within tenants
+  </Card>
+  <Card title="Multi-Tenant Guide" icon="building" href="/guides/multi-tenant">
+    More multi-tenant patterns
+  </Card>
+</CardGroup>

@@ -1,0 +1,47 @@
+---
+title: 'Get Projects'
+api: 'GET /projects'
+description: 'List projects with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="tenantId" type="string">
+  Filter by tenant ID
+</ParamField>
+
+<ParamField query="workspaceId" type="string">
+  Filter by workspace ID
+</ParamField>
+
+## Response
+
+Returns an array of project objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/projects?workspaceId=workspace_main' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "project_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "tenantId": "tenant_acme",
+    "workspaceId": "workspace_main",
+    "scopeId": "scope_project_api",
+    "name": "API Service"
+  },
+  {
+    "id": "project_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "tenantId": "tenant_acme",
+    "workspaceId": "workspace_main",
+    "scopeId": "scope_project_web",
+    "name": "Web App"
+  }
+]
+```
+</ResponseExample>

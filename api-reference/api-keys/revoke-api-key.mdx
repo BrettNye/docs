@@ -1,0 +1,38 @@
+---
+title: 'Revoke API Key'
+api: 'POST /api-keys/{id}/revoke'
+description: 'Revoke an API key, immediately invalidating it'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The API key ID to revoke
+</ParamField>
+
+## Response
+
+Returns the revoked API key object with status set to `revoked`.
+
+<Warning>
+  Revoking an API key is immediate and permanent. Any requests using this key will be rejected.
+</Warning>
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/api-keys/apk_001/revoke' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "apk_001",
+  "name": "CI Pipeline",
+  "status": "revoked",
+  "revokedAt": "2024-01-16T10:30:00Z",
+  "revokedBySubjectId": "subject_jane"
+}
+```
+</ResponseExample>

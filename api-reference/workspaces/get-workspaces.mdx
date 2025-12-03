@@ -1,0 +1,41 @@
+---
+title: 'Get Workspaces'
+api: 'GET /workspaces'
+description: 'List workspaces with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="tenantId" type="string">
+  Filter by tenant ID
+</ParamField>
+
+## Response
+
+Returns an array of workspace objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/workspaces?tenantId=tenant_acme' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "workspace_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "tenantId": "tenant_acme",
+    "scopeId": "scope_workspace_main",
+    "name": "Main Workspace"
+  },
+  {
+    "id": "workspace_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "tenantId": "tenant_acme",
+    "scopeId": "scope_workspace_dev",
+    "name": "Development"
+  }
+]
+```
+</ResponseExample>

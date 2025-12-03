@@ -1,0 +1,50 @@
+---
+title: 'Get Tenants'
+api: 'GET /tenants'
+description: 'List tenants with optional filters'
+---
+
+## Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by tenant status. One of: `active`, `suspended`, `pending`, `deleted`
+</ParamField>
+
+<ParamField query="kind" type="string">
+  Filter by tenant kind. One of: `standard`, `enterprise`, `trial`
+</ParamField>
+
+<ParamField query="planKey" type="string">
+  Filter by plan key
+</ParamField>
+
+## Response
+
+Returns an array of tenant objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/tenants?status=active' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "tenant_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "name": "Acme Corp",
+    "kind": "standard",
+    "scopeId": "scope_acme",
+    "slug": "acme-corp",
+    "planKey": "pro",
+    "status": "active",
+    "maxUsers": 50,
+    "maxWorkspaces": 10,
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

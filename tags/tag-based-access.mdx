@@ -1,0 +1,344 @@
+---
+title: 'Tag-Based Access Control'
+description: 'Use tags in permission conditions for attribute-based access'
+icon: 'key'
+---
+
+## Overview
+
+Tag-based access control (ABAC) uses tags on subjects and resources to make dynamic authorization decisions. Instead of static role assignments, access is determined by matching attributes.
+
+**Example:** "Users can read documents tagged with their department."
+
+## How It Works
+
+1. **Tag subjects** with attributes (department, clearance, skills)
+2. **Tag resources** with attributes (department, sensitivity, category)
+3. **Create permissions** with JSON Logic conditions that compare tags
+4. **Evaluation** checks if the subject's tags match the resource's tags
+
+## Basic Tag Matching
+
+### Department Match
+
+Users can only access documents in their department:
+
+```bash
+# 1. Create department tags
+curl -X POST 'https://api.example.com/tags/batch' \
+  -d '[
+    {"tagGroupId": "tg_dept", "identifier": "engineering", "label": "Engineering"},
+    {"tagGroupId": "tg_dept", "identifier": "finance", "label": "Finance"}
+  ]'
+
+# 2. Tag a user
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_engineering", "targetType": "subject", "targetId": "subject_jane"}'
+
+# 3. Tag a document
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -d '{"tagId": "tag_engineering", "targetType": "resource", "targetId": "resource_doc_123"}'
+
+# 4. Create permission with tag condition
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:*:dept-match",
+    "label": "Read Department Documents",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  }'
+```
+
+### Evaluation
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_doc_123" },
+  includeResourceTags: true  // Load resource tags automatically
+});
+
+// Jane has tag: engineering
+// Document has tag: engineering
+// Condition: engineering in [engineering] = true
+// Result: allowed = true
+```
+
+## JSON Logic Patterns
+
+### Any Tag Matches
+
+Subject has at least one tag that matches the resource:
+
+```json
+{
+  "some": [
+    {"var": "resource.tags.departments"},
+    {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+  ]
+}
+```
+
+### All Tags Required
+
+Subject must have ALL tags the resource has:
+
+```json
+{
+  "all": [
+    {"var": "resource.tags.departments"},
+    {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+  ]
+}
+```
+
+### Specific Tag Required
+
+Resource must have a specific tag:
+
+```json
+{
+  "in": ["public", {"var": "resource.tags.sensitivity"}]
+}
+```
+
+### Clearance Level
+
+Subject's clearance must meet or exceed resource's requirement:
+
+```json
+{
+  ">=": [
+    {"var": "subject.meta.clearanceLevel"},
+    {"var": "resource.meta.requiredClearance"}
+  ]
+}
+```
+
+### Combined Conditions
+
+Multiple conditions with AND/OR:
+
+```json
+{
+  "and": [
+    {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    },
+    {
+      "or": [
+        {"in": ["public", {"var": "resource.tags.sensitivity"}]},
+        {">=": [{"var": "subject.meta.clearanceLevel"}, 3]}
+      ]
+    }
+  ]
+}
+```
+
+## Common Patterns
+
+### Pattern 1: Department-Based Access
+
+```bash
+# Permission: Read documents in your department
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:dept",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.departments"},
+        {"in": [{"var": ""}, {"var": "subject.tags.departments"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 2: Sensitivity Levels
+
+```bash
+# Permission: Read based on clearance
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:read:clearance",
+    "logic": {
+      "or": [
+        {"in": ["public", {"var": "resource.tags.sensitivity"}]},
+        {
+          "and": [
+            {"in": ["internal", {"var": "resource.tags.sensitivity"}]},
+            {"var": "subject.isEmployee"}
+          ]
+        },
+        {
+          "and": [
+            {"in": ["confidential", {"var": "resource.tags.sensitivity"}]},
+            {">=": [{"var": "subject.meta.clearanceLevel"}, 2]}
+          ]
+        },
+        {
+          "and": [
+            {"in": ["restricted", {"var": "resource.tags.sensitivity"}]},
+            {">=": [{"var": "subject.meta.clearanceLevel"}, 3]}
+          ]
+        }
+      ]
+    }
+  }'
+```
+
+### Pattern 3: Labor Class Matching (Construction)
+
+```bash
+# Workers can only access jobs matching their certifications
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "view",
+    "resourceType": "job",
+    "resourcePattern": "*",
+    "key": "job:view:labor-match",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.labor-classes"},
+        {"in": [{"var": ""}, {"var": "subject.tags.labor-classes"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 4: Project Team Access
+
+```bash
+# Only project team members can access project resources
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "project-resource",
+    "resourcePattern": "*",
+    "key": "project-resource:read:team",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.projects"},
+        {"in": [{"var": ""}, {"var": "subject.tags.projects"}]}
+      ]
+    }
+  }'
+```
+
+### Pattern 5: Geographic Restrictions
+
+```bash
+# Access based on region
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "customer-data",
+    "resourcePattern": "*",
+    "key": "customer-data:read:region",
+    "logic": {
+      "some": [
+        {"var": "resource.tags.regions"},
+        {"in": [{"var": ""}, {"var": "subject.tags.regions"}]}
+      ]
+    }
+  }'
+```
+
+## Context Variables
+
+In tag-based conditions, you have access to:
+
+| Variable | Description |
+|----------|-------------|
+| `subject.id` | Subject's Bedrock ID |
+| `subject.type` | Subject type (user, agent, etc.) |
+| `subject.meta.*` | Subject metadata fields |
+| `subject.tags.*` | Subject's tags by group key |
+| `resource.id` | Resource's Bedrock ID |
+| `resource.type` | Resource type key |
+| `resource.meta.*` | Resource metadata |
+| `resource.tags.*` | Resource's tags by group key |
+| `context.*` | Custom context passed in evaluation |
+
+## Debugging Tag Conditions
+
+The evaluation response includes context for debugging:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_doc_123" },
+  includeResourceTags: true
+});
+
+console.log(decision.evaluatedContext);
+// {
+//   subject: {
+//     id: "subject_jane",
+//     tags: { departments: ["engineering"] }
+//   },
+//   resource: {
+//     id: "resource_doc_123",
+//     tags: { departments: ["finance"] }
+//   }
+// }
+
+console.log(decision.explanation);
+// "Denied: No matching department tags"
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep conditions simple">
+    Complex nested conditions are hard to debug. Break them into multiple permissions if needed.
+  </Accordion>
+  <Accordion title="Use meaningful tag group keys">
+    The key appears in conditions (`resource.tags.departments`), so make it readable.
+  </Accordion>
+  <Accordion title="Test with edge cases">
+    Test with subjects/resources that have no tags, multiple tags, and mismatched tags.
+  </Accordion>
+  <Accordion title="Document your conditions">
+    Use the permission's `description` field to explain what the condition does.
+  </Accordion>
+  <Accordion title="Combine with role-based access">
+    Tag-based conditions work alongside roles. A subject still needs the permission via a role.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Delegation" icon="handshake" href="/delegation/index">
+    Learn about acting on behalf of other subjects
+  </Card>
+  <Card title="Conditional Permissions" icon="code" href="/guides/conditional-permissions">
+    More JSON Logic patterns
+  </Card>
+</CardGroup>

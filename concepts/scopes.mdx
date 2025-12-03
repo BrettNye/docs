@@ -1,0 +1,216 @@
+---
+title: 'Scopes'
+description: 'Hierarchical containers that define authorization boundaries'
+icon: 'sitemap'
+---
+
+## What is a Scope?
+
+A **scope** is a container that defines an authorization boundary. Scopes form a hierarchy—like folders in a file system—where permissions can be inherited from parent scopes and optionally overridden at child scopes.
+
+Every authorization decision in Bedrock happens within a scope context.
+
+## Scope Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `typeId` | `string` | Reference to the scope type |
+| `externalId` | `string?` | Your system's identifier for this scope |
+| `name` | `string?` | Human-readable name |
+| `meta` | `Record<string, unknown>?` | Custom metadata |
+
+## Scope Hierarchy
+
+Scopes connect to form a tree structure via **hierarchy edges**:
+
+```
+Acme Corp (Organization)
+├── Engineering (Team)
+│   ├── Backend (Project)
+│   │   ├── Production (Environment)
+│   │   └── Staging (Environment)
+│   └── Frontend (Project)
+│       └── Production (Environment)
+└── Sales (Team)
+    └── CRM (Project)
+        └── Production (Environment)
+```
+
+### Creating Hierarchy Edges
+
+```bash
+# Create parent-child relationship
+curl -X POST 'https://api.example.com/scope-hierarchy' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "parentScopeId": "scope_acme",
+    "childScopeId": "scope_engineering"
+  }'
+```
+
+### Querying the Hierarchy
+
+```bash
+# Get children of a scope
+curl -X GET 'https://api.example.com/scopes/scope_acme/children'
+
+# Get parents of a scope
+curl -X GET 'https://api.example.com/scopes/scope_engineering/parents'
+```
+
+## Permission Inheritance
+
+When a subject has a role in a parent scope, they inherit that role's permissions in all child scopes:
+
+```
+Organization ─── Subject has "Editor" role here
+    │
+    ├── Team A ─── Subject inherits "Editor" permissions
+    │   │
+    │   └── Project X ─── Subject inherits "Editor" permissions
+    │
+    └── Team B ─── Subject inherits "Editor" permissions
+```
+
+<Note>
+  Inheritance flows **downward only**. Having a role in a child scope does not grant access to parent scopes.
+</Note>
+
+## Scope-Specific Roles
+
+Roles are defined at a specific scope and can be used in that scope and its descendants:
+
+```bash
+# Create a role at the organization level
+curl -X POST 'https://api.example.com/roles' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Editor",
+    "description": "Can read and write documents",
+    "scopeId": "scope_acme"
+  }'
+```
+
+This "Editor" role can now be assigned to memberships in:
+- `scope_acme` (where it's defined)
+- Any descendant scope (teams, projects, environments)
+
+## Scope-Specific Permissions
+
+Permissions are also scoped. A permission defined at a parent scope is available to roles in that scope and all descendants:
+
+```bash
+# Create a permission at the organization level
+curl -X POST 'https://api.example.com/permissions' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_acme",
+    "action": "write",
+    "resourceType": "document",
+    "resourcePattern": "*",
+    "key": "document:write:*",
+    "label": "Write Documents"
+  }'
+```
+
+## External IDs
+
+Use `externalId` to map Bedrock scopes to entities in your system:
+
+```bash
+# Create scope with external ID
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{
+    "typeId": "scope_type_project",
+    "name": "Backend API",
+    "externalId": "project-123"
+  }'
+
+# Later, look up by external ID
+curl -X GET 'https://api.example.com/scopes?externalId=project-123'
+```
+
+## Scope Metadata
+
+Store custom data on scopes using the `meta` field:
+
+```bash
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{
+    "typeId": "scope_type_project",
+    "name": "Backend API",
+    "meta": {
+      "region": "us-east-1",
+      "costCenter": "engineering",
+      "compliance": ["soc2", "hipaa"]
+    }
+  }'
+```
+
+Metadata can be used in conditional permission logic.
+
+## Common Patterns
+
+### Pattern 1: Multi-Tenant Isolation
+
+Each tenant gets its own scope tree:
+
+```
+Platform (root)
+├── Tenant A (Organization)
+│   └── ... (Tenant A's hierarchy)
+└── Tenant B (Organization)
+    └── ... (Tenant B's hierarchy)
+```
+
+### Pattern 2: Environment Separation
+
+Separate permissions by environment:
+
+```
+Project
+├── Production (strict permissions)
+├── Staging (relaxed permissions)
+└── Development (open permissions)
+```
+
+### Pattern 3: Department-Based Access
+
+Organize by organizational structure:
+
+```
+Company
+├── Engineering
+│   ├── Backend Team
+│   └── Frontend Team
+├── Sales
+│   ├── Enterprise
+│   └── SMB
+└── Finance
+    └── Accounting
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Scope" icon="plus" href="/api-reference/scopes/create-scope">
+    Create a new scope
+  </Card>
+  <Card title="Get Scope Children" icon="sitemap" href="/api-reference/scopes/get-scope-children">
+    Get child scopes
+  </Card>
+  <Card title="Create Hierarchy Edge" icon="link" href="/api-reference/scope-hierarchy/create-edge">
+    Link scopes in hierarchy
+  </Card>
+  <Card title="All Scope Endpoints" icon="list" href="/api-reference/scopes/get-scopes">
+    View all scope operations
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Scope Types" icon="arrow-right" href="/concepts/scope-types">
+  Learn how scope types define the rules for your hierarchy
+</Card>

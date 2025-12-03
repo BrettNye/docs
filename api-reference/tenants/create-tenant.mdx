@@ -1,0 +1,103 @@
+---
+title: 'Create Tenant'
+api: 'POST /tenants'
+description: 'Create a new tenant'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `tenant_{uuidv7}`
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name for the tenant
+</ParamField>
+
+<ParamField body="kind" type="string" required>
+  Tenant kind. One of: `standard`, `enterprise`, `trial`
+</ParamField>
+
+<ParamField body="slug" type="string" required>
+  URL-friendly unique identifier
+</ParamField>
+
+<ParamField body="externalId" type="string">
+  External system identifier (e.g., Stripe customer ID)
+</ParamField>
+
+<ParamField body="ownerUserId" type="string">
+  User ID of the tenant owner
+</ParamField>
+
+<ParamField body="billingEmail" type="string">
+  Email for billing communications
+</ParamField>
+
+<ParamField body="technicalContactEmail" type="string">
+  Email for technical communications
+</ParamField>
+
+<ParamField body="planKey" type="string" required>
+  Subscription plan key (e.g., `free`, `pro`, `enterprise`)
+</ParamField>
+
+<ParamField body="maxUsers" type="number">
+  Maximum number of users allowed
+</ParamField>
+
+<ParamField body="maxWorkspaces" type="number">
+  Maximum number of workspaces allowed
+</ParamField>
+
+<ParamField body="maxProjects" type="number">
+  Maximum number of projects allowed
+</ParamField>
+
+<ParamField body="maxEnvironments" type="number">
+  Maximum number of environments allowed
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Custom metadata
+</ParamField>
+
+## Response
+
+Returns the created tenant object. Also creates an associated scope automatically.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/tenants' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Acme Corp",
+    "kind": "standard",
+    "slug": "acme-corp",
+    "planKey": "pro",
+    "billingEmail": "billing@acme.com",
+    "maxUsers": 50,
+    "maxWorkspaces": 10
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "tenant_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "name": "Acme Corp",
+  "kind": "standard",
+  "scopeId": "scope_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+  "slug": "acme-corp",
+  "planKey": "pro",
+  "status": "active",
+  "billingEmail": "billing@acme.com",
+  "maxUsers": 50,
+  "maxWorkspaces": 10,
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

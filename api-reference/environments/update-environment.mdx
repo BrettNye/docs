@@ -1,0 +1,44 @@
+---
+title: 'Update Environment'
+api: 'PATCH /environments/{id}'
+description: 'Update an environment'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The environment ID to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name
+</ParamField>
+
+## Response
+
+Returns the updated environment object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/environments/environment_prod' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Production (US-East)"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "environment_prod",
+  "tenantId": "tenant_acme",
+  "projectId": "project_api",
+  "scopeId": "scope_env_prod",
+  "name": "Production (US-East)"
+}
+```
+</ResponseExample>

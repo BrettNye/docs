@@ -1,0 +1,81 @@
+---
+title: 'Create User'
+api: 'POST /users'
+description: 'Create a new user'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `user_{uuidv7}`
+</ParamField>
+
+<ParamField body="kindeId" type="string" required>
+  External IDP identifier (Kinde `sub` claim)
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  User's email address
+</ParamField>
+
+<ParamField body="emailVerified" type="boolean">
+  Whether the email is verified. Default: `false`
+</ParamField>
+
+<ParamField body="firstName" type="string">
+  First name
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  Last name
+</ParamField>
+
+<ParamField body="displayName" type="string">
+  Display name (defaults to firstName + lastName or email)
+</ParamField>
+
+<ParamField body="avatarUrl" type="string">
+  URL to avatar image
+</ParamField>
+
+<ParamField body="defaultTenantId" type="string">
+  Default tenant for the user
+</ParamField>
+
+## Response
+
+Returns the created user object. Also creates an associated Bedrock subject automatically.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/users' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "kindeId": "kp_abc123",
+    "email": "jane@acme.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "defaultTenantId": "tenant_acme"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "user_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "subjectId": "subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+  "kindeId": "kp_abc123",
+  "email": "jane@acme.com",
+  "emailVerified": false,
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "displayName": "Jane Doe",
+  "defaultTenantId": "tenant_acme",
+  "status": "active",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

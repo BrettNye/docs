@@ -1,0 +1,202 @@
+---
+title: 'Resource Types'
+description: 'Define categories of resources in your application'
+icon: 'shapes'
+---
+
+## What is a Resource Type?
+
+A **resource type** defines a category of resources. Before creating resources, you define their types—like "Document", "Project", or "User". Resource types are referenced in permissions to specify what kind of entity a permission applies to.
+
+## Resource Type Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `name` | `string` | Human-readable name |
+| `key` | `string` | Machine-readable key (used in permissions) |
+| `scopeId` | `string` | Scope where this type is defined |
+| `createdAt` | `string` | Creation timestamp |
+| `createdBy` | `string` | Subject who created it |
+
+## Creating Resource Types
+
+```bash
+curl -X POST 'https://api.example.com/resource-types' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Document",
+    "key": "document",
+    "scopeId": "scope_acme"
+  }'
+```
+
+### Batch Creation
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Document", "key": "document", "scopeId": "scope_acme"},
+    {"name": "Folder", "key": "folder", "scopeId": "scope_acme"},
+    {"name": "Project", "key": "project", "scopeId": "scope_acme"},
+    {"name": "Task", "key": "task", "scopeId": "scope_acme"}
+  ]'
+```
+
+## Resource Type Keys
+
+The `key` field is used in permission definitions:
+
+```bash
+# Permission references the resource type key
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_acme",
+    "action": "read",
+    "resourceType": "document",  # Matches the key
+    "resourcePattern": "*",
+    "key": "document:read:*"
+  }'
+```
+
+<Note>
+  Use lowercase, singular keys: `document` not `Documents`, `project` not `projects`.
+</Note>
+
+## Resource Type Hierarchies
+
+Resource types can form hierarchies to model inheritance relationships:
+
+```bash
+# Define that Documents can be children of Folders
+curl -X POST 'https://api.example.com/resource-type-hierarchy' \
+  -d '{
+    "parentTypeId": "rtype_folder",
+    "childTypeId": "rtype_document"
+  }'
+```
+
+This enables:
+- Modeling containment (folders contain documents)
+- Permission inheritance (access to folder grants access to contents)
+- Hierarchical queries
+
+```
+Folder (resource type)
+├── Document (resource type)
+└── Folder (resource type - nested folders)
+```
+
+## Scope Inheritance
+
+Resource types defined at a parent scope are available in child scopes:
+
+```
+Organization (defines: document, project, user)
+    │
+    ├── Team A ─── can use document, project, user
+    │
+    └── Team B ─── can use document, project, user
+```
+
+## Common Resource Type Patterns
+
+### Content Management
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Workspace", "key": "workspace", "scopeId": "scope_org"},
+    {"name": "Folder", "key": "folder", "scopeId": "scope_org"},
+    {"name": "Document", "key": "document", "scopeId": "scope_org"},
+    {"name": "Page", "key": "page", "scopeId": "scope_org"},
+    {"name": "Comment", "key": "comment", "scopeId": "scope_org"},
+    {"name": "Attachment", "key": "attachment", "scopeId": "scope_org"}
+  ]'
+```
+
+### Issue Tracking
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Project", "key": "project", "scopeId": "scope_org"},
+    {"name": "Epic", "key": "epic", "scopeId": "scope_org"},
+    {"name": "Issue", "key": "issue", "scopeId": "scope_org"},
+    {"name": "Sprint", "key": "sprint", "scopeId": "scope_org"},
+    {"name": "Label", "key": "label", "scopeId": "scope_org"}
+  ]'
+```
+
+### HR System
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Employee", "key": "employee", "scopeId": "scope_org"},
+    {"name": "Department", "key": "department", "scopeId": "scope_org"},
+    {"name": "Timesheet", "key": "timesheet", "scopeId": "scope_org"},
+    {"name": "Leave Request", "key": "leave-request", "scopeId": "scope_org"},
+    {"name": "Performance Review", "key": "performance-review", "scopeId": "scope_org"}
+  ]'
+```
+
+### Construction / Field Service
+
+```bash
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -d '[
+    {"name": "Job Site", "key": "jobsite", "scopeId": "scope_org"},
+    {"name": "Work Order", "key": "work-order", "scopeId": "scope_org"},
+    {"name": "Equipment", "key": "equipment", "scopeId": "scope_org"},
+    {"name": "Safety Report", "key": "safety-report", "scopeId": "scope_org"},
+    {"name": "Daily Log", "key": "daily-log", "scopeId": "scope_org"}
+  ]'
+```
+
+## Permissions by Resource Type
+
+Create permissions for each resource type:
+
+```bash
+# CRUD permissions for documents
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "create", "resourceType": "document", "resourcePattern": "*", "key": "document:create:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*"},
+    {"scopeId": "scope_org", "action": "update", "resourceType": "document", "resourcePattern": "*", "key": "document:update:*"},
+    {"scopeId": "scope_org", "action": "delete", "resourceType": "document", "resourcePattern": "*", "key": "document:delete:*"}
+  ]'
+
+# CRUD permissions for projects
+curl -X POST 'https://api.example.com/permissions/batch' \
+  -d '[
+    {"scopeId": "scope_org", "action": "create", "resourceType": "project", "resourcePattern": "*", "key": "project:create:*"},
+    {"scopeId": "scope_org", "action": "read", "resourceType": "project", "resourcePattern": "*", "key": "project:read:*"},
+    {"scopeId": "scope_org", "action": "update", "resourceType": "project", "resourcePattern": "*", "key": "project:update:*"},
+    {"scopeId": "scope_org", "action": "delete", "resourceType": "project", "resourcePattern": "*", "key": "project:delete:*"}
+  ]'
+```
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="Create Resource Type" icon="plus" href="/api-reference/resource-types/create-resource-type">
+    Create a new resource type
+  </Card>
+  <Card title="Get Resource Types" icon="list" href="/api-reference/resource-types/get-resource-types">
+    List all resource types
+  </Card>
+  <Card title="Update Resource Type" icon="pen" href="/api-reference/resource-types/update-resource-type">
+    Update a resource type
+  </Card>
+  <Card title="Delete Resource Type" icon="trash" href="/api-reference/resource-types/delete-resource-type">
+    Delete a resource type
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<Card title="Resource Hierarchies" icon="arrow-right" href="/resources/resource-hierarchies">
+  Learn how to model parent-child resource relationships
+</Card>

@@ -1,0 +1,33 @@
+---
+title: 'Get Workspace'
+api: 'GET /workspaces/{id}'
+description: 'Get a workspace by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The workspace ID
+</ParamField>
+
+## Response
+
+Returns the workspace object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/workspaces/workspace_main' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "workspace_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "tenantId": "tenant_acme",
+  "scopeId": "scope_workspace_main",
+  "name": "Main Workspace"
+}
+```
+</ResponseExample>
