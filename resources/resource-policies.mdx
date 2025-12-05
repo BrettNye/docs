@@ -1,0 +1,407 @@
+---
+title: 'Resource Policies'
+description: 'Fine-grained allow/deny access control on resources and collections'
+icon: 'shield-check'
+---
+
+## What are Resource Policies?
+
+**Resource Policies** provide fine-grained access control at the resource level. Unlike role-based permissions that apply broadly, policies target specific resources or collections with precise allow/deny rules.
+
+Policies are evaluated **before** role-based permissions, giving you a powerful override mechanism.
+
+## Policy Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `scopeId` | `string` | Scope where policy is defined |
+| `name` | `string` | Display name |
+| `description` | `string?` | What this policy does |
+| `target` | `PolicyTarget` | Resource or collection to target |
+| `actions` | `string[]` | Actions this policy applies to |
+| `effect` | `PolicyEffectEnum` | `allow` or `deny` |
+| `priority` | `number` | Higher priority = evaluated first (default: 0) |
+| `subjectCondition` | `Record<string, unknown>?` | JSON Logic to match the actor |
+| `contextCondition` | `Record<string, unknown>?` | JSON Logic to match request context |
+
+## Policy Targets
+
+### Target a Specific Resource
+
+```json
+{
+  "target": {
+    "kind": "resource",
+    "resourceId": "resource_confidential_report"
+  }
+}
+```
+
+### Target a Collection
+
+```json
+{
+  "target": {
+    "kind": "collection",
+    "collectionId": "collection_finance_docs"
+  }
+}
+```
+
+## Creating Policies
+
+### Allow Policy on a Resource
+
+```bash
+# Allow finance team to read the Q4 report
+curl -X POST 'https://api.example.com/resource-policies' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Finance Q4 Report Access",
+    "target": {
+      "kind": "resource",
+      "resourceId": "resource_q4_report"
+    },
+    "actions": ["read"],
+    "effect": "allow",
+    "subjectCondition": {
+      "==": [{"var": "subject.meta.department"}, "finance"]
+    }
+  }'
+```
+
+### Deny Policy on a Collection
+
+```bash
+# Deny all access to archived documents
+curl -X POST 'https://api.example.com/resource-policies' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Block Archived Documents",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_archived"
+    },
+    "actions": ["*"],
+    "effect": "deny",
+    "priority": 100
+  }'
+```
+
+### Policy with Context Condition
+
+```bash
+# Only allow access during business hours
+curl -X POST 'https://api.example.com/resource-policies' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Business Hours Only",
+    "target": {
+      "kind": "resource",
+      "resourceId": "resource_production_db"
+    },
+    "actions": ["write", "delete"],
+    "effect": "allow",
+    "contextCondition": {
+      "and": [
+        {">=": [{"var": "context.time.hour"}, 9]},
+        {"<=": [{"var": "context.time.hour"}, 17]}
+      ]
+    }
+  }'
+```
+
+## Policy Effects
+
+### Allow
+
+Grants access if the policy matches:
+
+```bash
+{
+  "effect": "allow",
+  "actions": ["read", "update"],
+  "subjectCondition": {
+    "==": [{"var": "subject.meta.role"}, "manager"]
+  }
+}
+```
+
+### Deny
+
+Blocks access if the policy matches. Deny policies typically have higher priority:
+
+```bash
+{
+  "effect": "deny",
+  "priority": 100,
+  "actions": ["delete"],
+  "subjectCondition": {
+    "!=": [{"var": "subject.type"}, "admin"]
+  }
+}
+```
+
+## Priority and Evaluation Order
+
+Policies are evaluated in priority order (highest first):
+
+1. **Higher priority policies** are checked first
+2. **First matching policy** determines the outcome
+3. If no policy matches, **role-based permissions** are checked
+
+```bash
+# High priority deny (evaluated first)
+{
+  "name": "Block External IPs",
+  "effect": "deny",
+  "priority": 100,
+  "contextCondition": {
+    "!": {"in": [{"var": "context.ip"}, ["10.0.0.0/8", "192.168.0.0/16"]]}
+  }
+}
+
+# Lower priority allow (evaluated second)
+{
+  "name": "Allow Finance Team",
+  "effect": "allow",
+  "priority": 50,
+  "subjectCondition": {
+    "==": [{"var": "subject.meta.department"}, "finance"]
+  }
+}
+```
+
+## Subject Conditions
+
+Match based on the actor making the request:
+
+```bash
+# Only admins
+{
+  "subjectCondition": {
+    "==": [{"var": "subject.type"}, "admin"]
+  }
+}
+
+# Specific department
+{
+  "subjectCondition": {
+    "==": [{"var": "subject.meta.department"}, "engineering"]
+  }
+}
+
+# Clearance level
+{
+  "subjectCondition": {
+    ">=": [{"var": "subject.meta.clearanceLevel"}, 3]
+  }
+}
+
+# Multiple conditions
+{
+  "subjectCondition": {
+    "and": [
+      {"==": [{"var": "subject.meta.department"}, "finance"]},
+      {">=": [{"var": "subject.meta.level"}, 2]}
+    ]
+  }
+}
+```
+
+## Context Conditions
+
+Match based on request context:
+
+```bash
+# Business hours
+{
+  "contextCondition": {
+    "and": [
+      {">=": [{"var": "context.time.hour"}, 9]},
+      {"<=": [{"var": "context.time.hour"}, 17]}
+    ]
+  }
+}
+
+# Approved IP ranges
+{
+  "contextCondition": {
+    "in": [{"var": "context.ip"}, ["10.0.0.0/8", "192.168.1.0/24"]]
+  }
+}
+
+# Specific device types
+{
+  "contextCondition": {
+    "in": [{"var": "context.deviceType"}, ["desktop", "laptop"]]
+  }
+}
+```
+
+## Combined Conditions
+
+Use both subject and context conditions:
+
+```bash
+# Finance team during business hours from office IPs
+curl -X POST 'https://api.example.com/resource-policies' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Finance Office Access",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_financial_data"
+    },
+    "actions": ["read", "update"],
+    "effect": "allow",
+    "subjectCondition": {
+      "==": [{"var": "subject.meta.department"}, "finance"]
+    },
+    "contextCondition": {
+      "and": [
+        {">=": [{"var": "context.time.hour"}, 9]},
+        {"<=": [{"var": "context.time.hour"}, 17]},
+        {"in": [{"var": "context.ip"}, ["10.0.0.0/8"]]}
+      ]
+    }
+  }'
+```
+
+## Evaluation Flow
+
+When `BedrockEngine.evaluate()` is called:
+
+```
+1. Get resource being accessed
+2. Find policies targeting this resource directly
+3. Find collections matching this resource
+4. Get policies targeting those collections
+5. Combine all policies, sort by priority (descending)
+6. For each policy:
+   a. Check if action matches
+   b. Evaluate subjectCondition (if present)
+   c. Evaluate contextCondition (if present)
+   d. If all match → return policy's effect
+7. If no policy matches → continue to role-based evaluation
+```
+
+## Decision Output
+
+When a policy decides the outcome:
+
+```typescript
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane" },
+  scopeId: "scope_org",
+  action: "read",
+  resource: { resourceId: "resource_q4_report" },
+  context: { time: { hour: 14 } }
+});
+
+// If decided by policy:
+decision.allowed          // true or false
+decision.decidedByPolicy  // true
+decision.evaluatedPolicy  // { id: "policy_123", name: "Finance Access", ... }
+```
+
+## Common Patterns
+
+### Owner-Only Access
+
+```bash
+{
+  "name": "Owner Only",
+  "effect": "allow",
+  "actions": ["*"],
+  "subjectCondition": {
+    "==": [{"var": "subject.id"}, {"var": "resource.ownerId"}]
+  }
+}
+```
+
+### Deny All Except Admins
+
+```bash
+{
+  "name": "Admin Override",
+  "effect": "allow",
+  "priority": 1000,
+  "actions": ["*"],
+  "subjectCondition": {
+    "==": [{"var": "subject.type"}, "admin"]
+  }
+}
+
+{
+  "name": "Deny Everyone Else",
+  "effect": "deny",
+  "priority": 999,
+  "actions": ["*"]
+}
+```
+
+### Temporary Access Window
+
+```bash
+{
+  "name": "Maintenance Window",
+  "effect": "allow",
+  "actions": ["write", "delete"],
+  "contextCondition": {
+    "and": [
+      {">=": [{"var": "context.time.hour"}, 2]},
+      {"<=": [{"var": "context.time.hour"}, 4]}
+    ]
+  }
+}
+```
+
+### Geographic Restrictions
+
+```bash
+{
+  "name": "US Only",
+  "effect": "deny",
+  "actions": ["*"],
+  "contextCondition": {
+    "!": {"==": [{"var": "context.country"}, "US"]}
+  }
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use deny policies sparingly">
+    Prefer allow policies with specific conditions. Deny policies can be hard to debug.
+  </Accordion>
+  <Accordion title="Set appropriate priorities">
+    Use a consistent priority scheme. Example: deny=100+, allow=50, default=0.
+  </Accordion>
+  <Accordion title="Test policies thoroughly">
+    Verify both allow and deny cases before deploying.
+  </Accordion>
+  <Accordion title="Document policy intent">
+    Use clear names and descriptions explaining why the policy exists.
+  </Accordion>
+  <Accordion title="Prefer collections over individual resources">
+    Policies on collections are more maintainable than many individual resource policies.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Resource Collections" icon="layer-group" href="/resources/resource-collections">
+    Define dynamic resource groups for policies
+  </Card>
+  <Card title="Conditional Permissions" icon="code" href="/concepts/conditional-permissions">
+    JSON Logic conditions on role-based permissions
+  </Card>
+  <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
+    How policies fit into the evaluation flow
+  </Card>
+</CardGroup>

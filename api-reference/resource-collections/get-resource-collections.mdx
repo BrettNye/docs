@@ -1,0 +1,58 @@
+---
+title: 'Get Resource Collections'
+api: 'GET /resource-collections'
+description: 'Get resource collections for a scope'
+---
+
+## Query Parameters
+
+<ParamField query="scopeId" type="string" required>
+  ID of the scope to get collections for
+</ParamField>
+
+<ParamField query="resourceTypeId" type="string">
+  Filter by resource type
+</ParamField>
+
+## Response
+
+Returns an array of resource collection objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-collections?scopeId=scope_org' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Finance Documents",
+    "description": "All documents tagged with finance department",
+    "matchDefinition": {
+      "tags": {
+        "department": "finance"
+      }
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Active Documents",
+    "matchDefinition": {
+      "fields": {
+        "status": "active"
+      }
+    },
+    "createdAt": "2024-01-15T11:00:00Z"
+  }
+]
+```
+</ResponseExample>

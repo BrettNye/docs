@@ -15,7 +15,50 @@ icon: 'sitemap'
 | `parentResourceId` | `string` | The parent resource |
 | `childResourceId` | `string` | The child resource |
 | `relationshipType` | `string?` | Type of relationship (e.g., "contains", "references") |
+| `cascade` | `CascadeModeEnum` | Permission inheritance: `inherit` or `none` |
 | `createdAt` | `string` | When the relationship was created |
+
+## Cascade Modes
+
+The `cascade` property controls how permissions propagate through the hierarchy:
+
+### Inherit
+
+Permissions on the parent automatically apply to the child:
+
+```bash
+curl -X POST 'https://api.example.com/resource-hierarchy' \
+  -d '{
+    "parentResourceId": "resource_folder_123",
+    "childResourceId": "resource_doc_456",
+    "relationshipType": "contains",
+    "cascade": "inherit"
+  }'
+```
+
+With `cascade: "inherit"`:
+- If a user can read the folder, they can read documents inside
+- Permissions flow down the hierarchy automatically
+- Ideal for folder/document, project/task relationships
+
+### None
+
+No permission inheritance—child resources require explicit access:
+
+```bash
+curl -X POST 'https://api.example.com/resource-hierarchy' \
+  -d '{
+    "parentResourceId": "resource_issue_1",
+    "childResourceId": "resource_issue_2",
+    "relationshipType": "references",
+    "cascade": "none"
+  }'
+```
+
+With `cascade: "none"`:
+- Parent access does not grant child access
+- Each resource requires its own permissions
+- Ideal for references, links, dependencies
 
 ## Creating Resource Hierarchies
 
@@ -224,8 +267,40 @@ curl -X POST 'https://api.example.com/resource-hierarchy/batch' \
   </Accordion>
 </AccordionGroup>
 
+## Ancestor Traversal
+
+When evaluating permissions with `cascade: "inherit"`, the engine traverses ancestors:
+
+```bash
+# Get all ancestors of a resource
+curl -X GET 'https://api.example.com/resource-hierarchy/ancestors/resource_doc_456'
+```
+
+Response:
+```json
+[
+  {
+    "id": "resource_folder_123",
+    "displayName": "Engineering Docs",
+    "cascade": "inherit"
+  },
+  {
+    "id": "resource_workspace_root",
+    "displayName": "Workspace",
+    "cascade": "inherit"
+  }
+]
+```
+
+The evaluation engine checks permissions on each ancestor until access is granted or all ancestors are exhausted.
+
 ## Next Steps
 
-<Card title="Multi-Scope Resources" icon="arrow-right" href="/resources/multi-scope-resources">
-  Learn how to share resources across multiple scopes
-</Card>
+<CardGroup cols={2}>
+  <Card title="Resource Scope Links" icon="link" href="/resources/resource-scope-links">
+    Associate resources with multiple scopes
+  </Card>
+  <Card title="Resource Policies" icon="shield-check" href="/resources/resource-policies">
+    Fine-grained access control on resources
+  </Card>
+</CardGroup>

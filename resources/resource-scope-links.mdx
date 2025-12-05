@@ -1,0 +1,318 @@
+---
+title: 'Resource Scope Links'
+description: 'Associate resources with multiple scopes using typed links'
+icon: 'link'
+---
+
+## What are Resource Scope Links?
+
+**Resource Scope Links** allow you to associate a resource with multiple scopes beyond its owner scope. Each link has a **type** that describes the relationship, enabling different behaviors for sharing, aliasing, and mirroring resources.
+
+<Note>
+  Resource scope links replace the simpler "resource scopes" model, adding link types and metadata for richer relationships.
+</Note>
+
+## Link Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `resourceId` | `string` | The resource being linked |
+| `scopeId` | `string` | The scope to link to |
+| `linkType` | `LinkTypeEnum` | Type of link: `share`, `alias`, or `mirror` |
+| `metadata` | `Record<string, unknown>?` | Custom attributes for this link |
+| `createdAt` | `string` | When the link was created |
+
+## Link Types
+
+### Share
+
+The resource is **shared** with the scope. Users in the scope can see and access the resource based on their permissions.
+
+```bash
+# Share a document with the Sales team
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_sales",
+    "linkType": "share",
+    "metadata": {
+      "sharedBy": "user_jane",
+      "sharedAt": "2024-01-15T10:00:00Z",
+      "accessLevel": "read-only"
+    }
+  }'
+```
+
+**Use cases:**
+- Cross-team document sharing
+- Shared component libraries
+- Collaborative resources
+
+### Alias
+
+The resource **appears** in the scope under a different context. The resource has one canonical location but can be referenced from multiple places.
+
+```bash
+# Create an alias for a template in a project
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_template_invoice",
+    "scopeId": "scope_project_alpha",
+    "linkType": "alias",
+    "metadata": {
+      "aliasName": "Project Invoice Template",
+      "category": "templates"
+    }
+  }'
+```
+
+**Use cases:**
+- Templates available in multiple projects
+- Shortcuts to frequently used resources
+- Virtual folder structures
+
+### Mirror
+
+The resource is **mirrored** to the scope, typically for compliance, backup, or multi-region scenarios.
+
+```bash
+# Mirror data to a compliance zone
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_customer_data",
+    "scopeId": "scope_hipaa_zone",
+    "linkType": "mirror",
+    "metadata": {
+      "mirrorReason": "HIPAA compliance",
+      "syncEnabled": true
+    }
+  }'
+```
+
+**Use cases:**
+- Compliance zone classification
+- Multi-region data presence
+- Audit trail requirements
+
+## Creating Links
+
+### Single Link
+
+```bash
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "resourceId": "resource_report_q4",
+    "scopeId": "scope_executive",
+    "linkType": "share"
+  }'
+```
+
+### Batch Create
+
+```bash
+curl -X POST 'https://api.example.com/resource-scope-links/batch' \
+  -d '[
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_a", "linkType": "share"},
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_b", "linkType": "share"},
+    {"resourceId": "resource_lib_auth", "scopeId": "scope_project_c", "linkType": "share"}
+  ]'
+```
+
+## Querying Links
+
+### Get Links for a Resource
+
+```bash
+curl -X GET 'https://api.example.com/resource-scope-links?resourceId=resource_doc_123'
+```
+
+Response:
+```json
+[
+  {
+    "id": "rsl_abc123",
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_engineering",
+    "linkType": "share",
+    "metadata": { "sharedBy": "user_jane" }
+  },
+  {
+    "id": "rsl_def456",
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_sales",
+    "linkType": "share",
+    "metadata": { "sharedBy": "user_jane" }
+  }
+]
+```
+
+### Get Links for a Scope
+
+```bash
+curl -X GET 'https://api.example.com/resource-scope-links?scopeId=scope_sales'
+```
+
+## Using Metadata
+
+Link metadata enables custom attributes for each relationship:
+
+```bash
+# Share with expiration
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_contract",
+    "scopeId": "scope_legal_review",
+    "linkType": "share",
+    "metadata": {
+      "expiresAt": "2024-03-01T00:00:00Z",
+      "purpose": "Contract review",
+      "requestedBy": "user_bob"
+    }
+  }'
+```
+
+```bash
+# Alias with custom display
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_policy_doc",
+    "scopeId": "scope_onboarding",
+    "linkType": "alias",
+    "metadata": {
+      "displayName": "Employee Handbook",
+      "sortOrder": 1,
+      "icon": "book"
+    }
+  }'
+```
+
+## Updating Links
+
+```bash
+curl -X PATCH 'https://api.example.com/resource-scope-links/rsl_abc123' \
+  -d '{
+    "metadata": {
+      "accessLevel": "read-write",
+      "updatedAt": "2024-01-20T10:00:00Z"
+    }
+  }'
+```
+
+## Removing Links
+
+```bash
+# Remove by ID
+curl -X DELETE 'https://api.example.com/resource-scope-links/rsl_abc123'
+```
+
+## Access Control Considerations
+
+Resource scope links do **not** automatically grant access. Access is still determined by:
+
+1. **Membership** — Subject must be a member of the linked scope
+2. **Role** — Subject must have a role with appropriate permissions
+3. **Permission** — The role must include the required permission
+4. **Policies** — Any resource policies must allow access
+
+```typescript
+// Jane is in Sales with Viewer role
+// Document is linked to Sales with type "share"
+// Jane can read IF Sales scope has document:read permission
+
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane" },
+  scopeId: "scope_sales",
+  action: "read",
+  resource: { resourceId: "resource_doc_123" }
+});
+```
+
+## Patterns
+
+### Pattern 1: Shared Resources Library
+
+```bash
+# Create a shared resources scope
+curl -X POST 'https://api.example.com/scopes' \
+  -d '{"typeId": "scope_type_shared", "name": "Shared Resources"}'
+
+# Link common resources
+curl -X POST 'https://api.example.com/resource-scope-links/batch' \
+  -d '[
+    {"resourceId": "resource_template_1", "scopeId": "scope_shared", "linkType": "share"},
+    {"resourceId": "resource_template_2", "scopeId": "scope_shared", "linkType": "share"}
+  ]'
+```
+
+### Pattern 2: Matrix Organization
+
+Resources belong to both functional and project scopes:
+
+```bash
+# Engineering owns the design doc
+curl -X POST 'https://api.example.com/resources' \
+  -d '{
+    "resourceTypeId": "rtype_design_doc",
+    "scopeId": "scope_engineering",
+    "externalResourceId": "design-api-v2"
+  }'
+
+# Also link to the project
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_design_api_v2",
+    "scopeId": "scope_project_alpha",
+    "linkType": "share",
+    "metadata": {"role": "deliverable"}
+  }'
+```
+
+### Pattern 3: Compliance Classification
+
+```bash
+# Mark resource as HIPAA-controlled
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -d '{
+    "resourceId": "resource_patient_data",
+    "scopeId": "scope_hipaa_zone",
+    "linkType": "mirror",
+    "metadata": {
+      "complianceFramework": "HIPAA",
+      "dataClassification": "PHI"
+    }
+  }'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose the right link type">
+    Use `share` for collaboration, `alias` for shortcuts, `mirror` for compliance/backup.
+  </Accordion>
+  <Accordion title="Use metadata meaningfully">
+    Store context about why the link exists, who created it, and any constraints.
+  </Accordion>
+  <Accordion title="Consider using tags instead">
+    For simple classification without scope association, tags may be simpler.
+  </Accordion>
+  <Accordion title="Audit link creation">
+    Track who creates links and why for security and compliance.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Resource Hierarchies" icon="sitemap" href="/resources/resource-hierarchies">
+    Parent-child relationships between resources
+  </Card>
+  <Card title="Resource Collections" icon="layer-group" href="/resources/resource-collections">
+    Dynamic grouping of resources
+  </Card>
+  <Card title="Tags" icon="tags" href="/tags/tags">
+    Flexible metadata for classification
+  </Card>
+</CardGroup>

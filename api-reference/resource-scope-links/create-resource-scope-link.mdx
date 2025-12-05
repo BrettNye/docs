@@ -1,0 +1,64 @@
+---
+title: 'Create Resource Scope Link'
+api: 'POST /resource-scope-links'
+description: 'Create a new resource scope link'
+---
+
+## Request Body
+
+<ParamField body="id" type="string">
+  Optional client-provided ID. Format: `rsl_{uuidv7}`
+</ParamField>
+
+<ParamField body="resourceId" type="string" required>
+  ID of the resource to link
+</ParamField>
+
+<ParamField body="scopeId" type="string" required>
+  ID of the scope to link to
+</ParamField>
+
+<ParamField body="linkType" type="string" required>
+  Type of link: `share`, `alias`, or `mirror`
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Optional metadata for this link
+</ParamField>
+
+## Response
+
+Returns the created resource scope link object.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/resource-scope-links' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_sales",
+    "linkType": "share",
+    "metadata": {
+      "sharedBy": "user_jane",
+      "accessLevel": "read-only"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "resourceId": "resource_doc_123",
+  "scopeId": "scope_sales",
+  "linkType": "share",
+  "metadata": {
+    "sharedBy": "user_jane",
+    "accessLevel": "read-only"
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

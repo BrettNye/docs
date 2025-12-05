@@ -40,28 +40,44 @@ const decision = await bedrock.evaluate(input);
 
 ## Evaluation Steps
 
+The engine evaluates permissions in a specific order, with earlier steps taking precedence:
+
 ```
-1. Resolve Actor
-   └── Find subject, get memberships in scope hierarchy
-
-2. Collect Roles
-   └── Get role assignments for relevant memberships
-
-3. Gather Permissions
-   └── Get permissions from all assigned roles
-
-4. Apply Overrides
-   └── Process role, permission, and role-permission overrides
-
-5. Match Action & Resource
-   └── Filter to permissions matching the requested action/resource
-
-6. Evaluate Conditions
-   └── Run JSON Logic against context (if any)
-
-7. Return Decision
-   └── allowed: true/false + matching permissions + explanation
+┌─────────────────────────────────────────────────────────────┐
+│  1. RESOURCE POLICIES (highest priority)                    │
+│     ├── Get policies targeting the specific resource        │
+│     ├── Get collections matching the resource               │
+│     ├── Get policies targeting those collections            │
+│     ├── Sort by priority (highest first)                    │
+│     ├── Evaluate subject and context conditions             │
+│     └── If a policy matches → return allow/deny immediately │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. RESOURCE HIERARCHY INHERITANCE                          │
+│     ├── If resource has parents with cascade: inherit       │
+│     ├── Check ancestor permissions recursively              │
+│     └── Return if any ancestor grants permission            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. ROLE-BASED PERMISSIONS                                  │
+│     ├── Resolve actor → get memberships in scope hierarchy  │
+│     ├── Collect role assignments for memberships            │
+│     ├── Gather permissions from assigned roles              │
+│     ├── Apply scope overrides (role, permission, role-perm) │
+│     ├── Match action & resource pattern                     │
+│     ├── Evaluate conditional permissions (JSON Logic)       │
+│     └── Return decision with matching permissions           │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+<Note>
+  Resource policies are evaluated first and can short-circuit the entire evaluation. 
+  This makes them ideal for explicit allow/deny rules on sensitive resources.
+</Note>
 
 ## The Decision Output
 
@@ -70,13 +86,23 @@ interface BedrockDecision {
   allowed: boolean;                    // Final result
   matches: BedrockPermissionMatch[];   // Permissions that contributed
   explanation?: string;                // Human-readable reason
-  usedDelegation?: boolean;            // Was onBehalfOf used?
-  delegationId?: string;               // Delegation reference if applicable
-  evaluatedActor?: BedrockSubjectRef;  // Echo of actor
-  evaluatedOnBehalfOf?: BedrockSubjectRef; // Echo of principal
+  
+  // Policy evaluation (new)
+  evaluatedPolicy?: BedrockResourcePolicy;  // Policy that decided (if any)
+  decidedByPolicy?: boolean;           // Was decision made by a policy?
+  
+  // Resource context
   evaluatedResource?: BedrockResource; // Resolved resource
   evaluatedResourceType?: BedrockResourceType;
+  inheritedFrom?: string;              // Ancestor resource ID if inherited
   resourceTags?: BedrockTag[];         // Tags on the resource
+  
+  // Actor context
+  evaluatedActor?: BedrockSubjectRef;  // Echo of actor
+  evaluatedOnBehalfOf?: BedrockSubjectRef; // Echo of principal
+  usedDelegation?: boolean;            // Was onBehalfOf used?
+  delegationId?: string;               // Delegation reference if applicable
+  
   evaluatedContext?: Record<string, unknown>; // Final context used
 }
 ```

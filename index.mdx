@@ -1,91 +1,184 @@
 ---
-title: "Introduction"
-description: "Unified authorization for users, API keys, services, and AI agents"
+title: "Bedrock Authorization Platform"
+description: "Unified authorization for users, services, and AI agents"
 ---
 
-## What is Bedrock?
-
-Bedrock is a comprehensive authorization and access control system designed to govern **both humans and AI agents** within your organization. As AI agents become integral to workflows, Bedrock provides the infrastructure to manage their permissions alongside traditional users.
+**The authorization engine for the AI era.** Govern users, services, and AI agents with hierarchical scopes, resource policies, and conditional permissions.
 
 <CardGroup cols={2}>
-  <Card title="Unified Subject Model" icon="users">
-    Manage users, API keys, services, and AI agents with a single authorization model
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started in 5 minutes
   </Card>
-  <Card title="Hierarchical Scopes" icon="sitemap">
-    Define organizational structures with inherited permissions
-  </Card>
-  <Card title="Fine-grained Control" icon="sliders">
-    Override inherited permissions at any level in your hierarchy
-  </Card>
-  <Card title="Agent Governance" icon="robot">
-    Apply the same governance to AI agents that you apply to humans
+  <Card title="Core Concepts" icon="book" href="/concepts/index">
+    Understand the fundamentals
   </Card>
 </CardGroup>
 
-## Get Started
+---
 
-<Card
-  title="Quickstart Guide"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Set up Bedrock and create your first authorization structure in minutes.
+## Why Bedrock?
+
+Bedrock solves authorization problems traditional RBAC cannot:
+
+<CardGroup cols={3}>
+  <Card title="Hierarchical Scopes" icon="sitemap">
+    Org → Workspace → Project → Environment with full inheritance
+  </Card>
+  <Card title="Resource Policies" icon="shield-check">
+    Fine-grained allow/deny on specific resources or collections
+  </Card>
+  <Card title="Conditional Permissions" icon="code">
+    JSON Logic expressions for dynamic, context-aware access
+  </Card>
+  <Card title="AI Agent Governance" icon="robot">
+    Same authorization model for users, services, and AI agents
+  </Card>
+  <Card title="Multi-tenant Isolation" icon="building">
+    Complete tenant separation with scope hierarchies
+  </Card>
+  <Card title="Tag-based Access" icon="tags">
+    Dynamic permissions based on resource and subject tags
+  </Card>
+</CardGroup>
+
+---
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     EVALUATION ORDER                            │
+├─────────────────────────────────────────────────────────────────┤
+│  1. Resource Policies    →  Explicit allow/deny on resources    │
+│  2. Resource Hierarchy   →  Inherit from parent resources       │
+│  3. Role-Based Perms     →  Subject → Scope → Role → Permission │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+<Card title="Learn about Evaluation" icon="gears" href="/concepts/evaluation">
+  Understand how Bedrock decides if an action is allowed
 </Card>
+
+---
+
+## Core Concepts
+
+| Concept | Description | Learn More |
+|---------|-------------|------------|
+| **Scope** | Hierarchical node (org, workspace, project) | [Scopes →](/concepts/scopes) |
+| **Subject** | Actor: user, service, agent, api_key | [Subjects →](/concepts/subjects) |
+| **Role** | Bundle of permissions assigned to subjects | [Roles →](/concepts/roles) |
+| **Permission** | Action + resource type + pattern | [Permissions →](/concepts/permissions) |
+| **Resource** | Protected object with type and owner | [Resources →](/resources/resources) |
+| **Collection** | Dynamic resource group via match rules | [Collections →](/resources/resource-collections) |
+| **Policy** | Allow/deny rule on resource or collection | [Policies →](/resources/resource-policies) |
+| **Tag** | Metadata for conditional access | [Tags →](/tags/tags) |
+
+---
+
+## Quick Example
+
+```typescript
+import { BedrockEngine } from '@bedrock/core';
+
+// 1. Create engine with your storage
+const bedrock = new BedrockEngine(storage);
+
+// 2. Set up your authorization structure
+await bedrock.createScope({ id: 'scope_acme', name: 'Acme Corp' });
+await bedrock.createRole({ id: 'role_editor', scopeId: 'scope_acme', name: 'Editor' });
+await bedrock.createPermission({ 
+  scopeId: 'scope_acme', 
+  action: 'write', 
+  resourceType: 'document',
+  resourcePattern: '*'
+});
+
+// 3. Assign role to subject
+await bedrock.createMembership({ subjectId: 'user_jane', scopeId: 'scope_acme' });
+await bedrock.createRoleAssignment({ membershipId: 'membership_1', roleId: 'role_editor' });
+
+// 4. Evaluate permissions
+const decision = await bedrock.evaluate({
+  actor: { subjectId: 'user_jane', subjectType: 'user' },
+  scopeId: 'scope_acme',
+  action: 'write',
+  resource: { resourceType: 'document', resourcePattern: '*' }
+});
+
+console.log(decision.allowed); // true
+```
+
+<Card title="Full Quickstart Guide" icon="rocket" href="/quickstart">
+  Complete setup with all features
+</Card>
+
+---
 
 ## Use Cases
 
-<Columns cols={2}>
-  <Card
-    title="User Governance"
-    icon="user-shield"
-    href="/guides/user-governance"
-  >
-    Traditional RBAC for users across your organization hierarchy.
+<CardGroup cols={2}>
+  <Card title="User Governance" icon="user-shield" href="/guides/user-governance">
+    Traditional RBAC for users across your organization hierarchy
   </Card>
-  <Card
-    title="Agent Governance"
-    icon="robot"
-    href="/guides/agent-governance"
-  >
-    Control what AI agents can access and do within your systems.
+  <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
+    Control what AI agents can access and do within your systems
   </Card>
-  <Card
-    title="Multi-tenant Authorization"
-    icon="building"
-    href="/guides/multi-tenant"
-  >
-    Isolate permissions across tenants with hierarchical scopes.
+  <Card title="Multi-tenant Apps" icon="building" href="/guides/multi-tenant">
+    Isolate permissions across tenants with hierarchical scopes
   </Card>
-  <Card
-    title="API Reference"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Complete API documentation for all Bedrock endpoints.
+  <Card title="SaaS Platforms" icon="cloud" href="/guides/modeling-saas">
+    Model complex SaaS authorization with workspaces and projects
   </Card>
-</Columns>
+</CardGroup>
 
-## Why Bedrock for AI Agents?
+---
+
+## AI Agent Governance
 
 As organizations deploy AI agents (LLM-powered assistants, autonomous workflows, MCP servers), they face new challenges:
 
-- **What can this agent access?** — Agents need scoped permissions just like users
-- **Can I trust this agent in this context?** — Different scopes may require different agent capabilities
-- **How do I audit agent actions?** — Unified subject model enables consistent logging
-- **How do I revoke agent access?** — Same mechanisms as revoking user access
+| Challenge | Bedrock Solution |
+|-----------|------------------|
+| What can this agent access? | Scoped permissions via roles |
+| Can I trust this agent here? | Scope-level overrides |
+| How do I audit agent actions? | Unified subject model |
+| How do I revoke agent access? | Same as revoking user access |
 
-Bedrock treats agents as first-class subjects, enabling you to:
+Bedrock treats agents as first-class subjects:
 
-1. Register agents with the `agent` subject type
-2. Add agents to scopes via memberships
-3. Assign roles with specific permissions
-4. Override permissions at child scopes as needed
+```typescript
+// Register an AI agent
+await bedrock.createSubject({ 
+  id: 'agent_assistant',
+  type: 'agent',
+  externalId: 'openai-assistant-123'
+});
 
-<Card
-  title="Learn more about Agent Governance"
-  icon="arrow-right"
-  href="/guides/agent-governance"
->
-  See how to set up and manage AI agent permissions
+// Add to scope with restricted role
+await bedrock.createMembership({ 
+  subjectId: 'agent_assistant', 
+  scopeId: 'scope_production' 
+});
+await bedrock.createRoleAssignment({ 
+  membershipId: 'membership_agent',
+  roleId: 'role_readonly'  // Agents get read-only in production
+});
+```
+
+<Card title="Agent Governance Guide" icon="robot" href="/guides/agent-governance">
+  Complete guide to managing AI agent permissions
 </Card>
+
+---
+
+## API Reference
+
+<CardGroup cols={2}>
+  <Card title="REST API" icon="terminal" href="/api-reference/introduction">
+    Complete API documentation for all endpoints
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/quickstart">
+    Native TypeScript/JavaScript integration
+  </Card>
+</CardGroup>

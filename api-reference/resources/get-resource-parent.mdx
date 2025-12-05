@@ -1,0 +1,34 @@
+---
+title: 'Get Resource Parent'
+api: 'GET /resource-hierarchy/parent/{resourceId}'
+description: 'Get the parent resource in the hierarchy'
+---
+
+## Path Parameters
+
+<ParamField path="resourceId" type="string" required>
+  The child resource ID
+</ParamField>
+
+## Response
+
+Returns the parent resource, or 404 if no parent exists.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-hierarchy/parent/resource_doc_456' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "resource_folder_123",
+  "resourceTypeId": "rtype_folder",
+  "displayName": "Engineering Docs",
+  "relationshipType": "contains",
+  "cascade": "inherit"
+}
+```
+</ResponseExample>

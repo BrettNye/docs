@@ -1,0 +1,38 @@
+---
+title: 'Get Resource Scope Link'
+api: 'GET /resource-scope-links/{id}'
+description: 'Get a resource scope link by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource scope link ID
+</ParamField>
+
+## Response
+
+Returns the resource scope link object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-scope-links/rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "resourceId": "resource_doc_123",
+  "scopeId": "scope_sales",
+  "linkType": "share",
+  "metadata": {
+    "sharedBy": "user_jane",
+    "accessLevel": "read-only"
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

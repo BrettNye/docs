@@ -1,0 +1,32 @@
+---
+title: 'Delete Resource Collection'
+api: 'DELETE /resource-collections/{id}'
+description: 'Delete a resource collection'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource collection ID
+</ParamField>
+
+<Warning>
+  Deleting a collection will also remove any resource policies that target this collection.
+</Warning>
+
+## Response
+
+Returns 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/resource-collections/collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```
+204 No Content
+```
+</ResponseExample>

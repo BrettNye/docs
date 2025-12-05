@@ -17,7 +17,8 @@
             "group": "Getting Started",
             "pages": [
               "index",
-              "quickstart"
+              "quickstart",
+              "architecture"
             ]
           },
           {
@@ -29,17 +30,26 @@
               "concepts/subjects",
               "concepts/roles",
               "concepts/permissions",
+              "concepts/conditional-permissions",
+              "concepts/overrides",
               "concepts/evaluation"
             ]
           },
           {
-            "group": "Resources & Tags",
+            "group": "Resources",
             "pages": [
-              "resources/resources",
+              "resources/index",
               "resources/resource-types",
               "resources/resource-hierarchies",
-              "resources/multi-scope-resources",
-              "tags/tags",
+              "resources/resource-scope-links",
+              "resources/resource-collections",
+              "resources/resource-policies"
+            ]
+          },
+          {
+            "group": "Tags",
+            "pages": [
+              "tags/index",
               "tags/tag-groups",
               "tags/tag-bindings",
               "tags/tag-based-access"
@@ -228,7 +238,44 @@
               "api-reference/resources/create-resource",
               "api-reference/resources/create-resources-batch",
               "api-reference/resources/update-resource",
-              "api-reference/resources/delete-resource"
+              "api-reference/resources/delete-resource",
+              "api-reference/resources/get-resource-parent",
+              "api-reference/resources/get-resource-children",
+              "api-reference/resources/get-resource-ancestors",
+              "api-reference/resources/update-resource-hierarchy-edge"
+            ]
+          },
+          {
+            "group": "Resource Scope Links",
+            "pages": [
+              "api-reference/resource-scope-links/get-resource-scope-links",
+              "api-reference/resource-scope-links/get-resource-scope-link",
+              "api-reference/resource-scope-links/create-resource-scope-link",
+              "api-reference/resource-scope-links/create-resource-scope-links-batch",
+              "api-reference/resource-scope-links/update-resource-scope-link",
+              "api-reference/resource-scope-links/delete-resource-scope-link"
+            ]
+          },
+          {
+            "group": "Resource Collections",
+            "pages": [
+              "api-reference/resource-collections/get-resource-collections",
+              "api-reference/resource-collections/get-resource-collection",
+              "api-reference/resource-collections/create-resource-collection",
+              "api-reference/resource-collections/create-resource-collections-batch",
+              "api-reference/resource-collections/update-resource-collection",
+              "api-reference/resource-collections/delete-resource-collection"
+            ]
+          },
+          {
+            "group": "Resource Policies",
+            "pages": [
+              "api-reference/resource-policies/get-resource-policies",
+              "api-reference/resource-policies/get-resource-policy",
+              "api-reference/resource-policies/create-resource-policy",
+              "api-reference/resource-policies/create-resource-policies-batch",
+              "api-reference/resource-policies/update-resource-policy",
+              "api-reference/resource-policies/delete-resource-policy"
             ]
           },
           {

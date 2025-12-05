@@ -1,0 +1,287 @@
+---
+title: 'Conditional Permissions'
+description: 'Dynamic access control with JSON Logic expressions'
+icon: 'code'
+---
+
+## What are Conditional Permissions?
+
+**Conditional permissions** allow you to add dynamic rules to your access control using [JSON Logic](https://jsonlogic.com/) expressions. Instead of simple allow/deny, you can create permissions that evaluate based on:
+
+- Subject attributes (department, clearance level, role metadata)
+- Resource properties (owner, status, tags)
+- Request context (time, IP address, device type)
+- Custom business logic
+
+## Where Conditions Apply
+
+Conditions can be added at multiple levels:
+
+| Level | Interface | Use Case |
+|-------|-----------|----------|
+| **Role-Permission** | `BedrockRolePermission.condition` | "Editors can only edit draft documents" |
+| **Scope Override** | `BedrockScopeRolePermissionOverride.condition` | "In production, only during business hours" |
+| **Resource Policy** | `BedrockResourcePolicy.subjectCondition` | "Only finance team can access this report" |
+| **Resource Policy** | `BedrockResourcePolicy.contextCondition` | "Only from approved IP ranges" |
+
+## JSON Logic Basics
+
+JSON Logic uses a simple JSON structure to express conditions:
+
+```json
+{ "operator": [arguments] }
+```
+
+### Common Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `==` | Equals | `{"==": [{"var": "subject.type"}, "admin"]}` |
+| `!=` | Not equals | `{"!=": [{"var": "resource.status"}, "archived"]}` |
+| `>`, `>=`, `<`, `<=` | Comparisons | `{">=": [{"var": "subject.level"}, 3]}` |
+| `in` | Value in array | `{"in": [{"var": "subject.dept"}, ["finance", "accounting"]]}` |
+| `and` | All conditions true | `{"and": [cond1, cond2]}` |
+| `or` | Any condition true | `{"or": [cond1, cond2]}` |
+| `!` | Negation | `{"!": [condition]}` |
+| `if` | Conditional | `{"if": [cond, then, else]}` |
+
+### The `var` Operator
+
+Use `var` to access values from the evaluation context:
+
+```json
+{"var": "subject.meta.department"}
+{"var": "resource.tags.classification"}
+{"var": "context.time.hour"}
+```
+
+## Conditional Role-Permissions
+
+Add conditions when assigning permissions to roles:
+
+```bash
+# Editors can only edit documents they own
+curl -X POST 'https://api.example.com/role-permissions' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "roleId": "role_editor",
+    "permissionId": "perm_document_edit",
+    "condition": {
+      "==": [
+        {"var": "subject.id"},
+        {"var": "resource.ownerId"}
+      ]
+    }
+  }'
+```
+
+```bash
+# Managers can approve expenses under $10,000
+curl -X POST 'https://api.example.com/role-permissions' \
+  -d '{
+    "roleId": "role_manager",
+    "permissionId": "perm_expense_approve",
+    "condition": {
+      "<": [{"var": "resource.amount"}, 10000]
+    }
+  }'
+```
+
+## Conditional Scope Overrides
+
+Add conditions to scope-level overrides:
+
+```bash
+# In production, only allow writes during business hours
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_developer",
+    "permissionId": "perm_deploy",
+    "state": "enabled",
+    "condition": {
+      "and": [
+        {">=": [{"var": "context.time.hour"}, 9]},
+        {"<=": [{"var": "context.time.hour"}, 17]},
+        {"in": [{"var": "context.time.dayOfWeek"}, [1, 2, 3, 4, 5]]}
+      ]
+    }
+  }'
+```
+
+## Context Variables
+
+The evaluation context provides these variables:
+
+### Subject Variables
+
+| Variable | Description |
+|----------|-------------|
+| `subject.id` | Subject ID |
+| `subject.type` | Subject type (user, agent, service) |
+| `subject.externalId` | External system ID |
+| `subject.meta.*` | Custom metadata fields |
+
+### Resource Variables
+
+| Variable | Description |
+|----------|-------------|
+| `resource.id` | Resource ID |
+| `resource.type` | Resource type |
+| `resource.ownerId` | Owner subject ID |
+| `resource.ownerScopeId` | Owner scope ID |
+| `resource.meta.*` | Custom metadata fields |
+| `resource.tags.*` | Tag assignments |
+
+### Context Variables
+
+| Variable | Description |
+|----------|-------------|
+| `context.time.hour` | Current hour (0-23) |
+| `context.time.dayOfWeek` | Day of week (0=Sun, 6=Sat) |
+| `context.ip` | Request IP address |
+| `context.*` | Any custom context you provide |
+
+## Common Patterns
+
+### Department-Based Access
+
+```json
+{
+  "in": [
+    {"var": "subject.meta.department"},
+    {"var": "resource.tags.allowedDepartments"}
+  ]
+}
+```
+
+### Clearance Level
+
+```json
+{
+  ">=": [
+    {"var": "subject.meta.clearanceLevel"},
+    {"var": "resource.meta.requiredClearance"}
+  ]
+}
+```
+
+### Owner-Only Access
+
+```json
+{
+  "==": [
+    {"var": "subject.id"},
+    {"var": "resource.ownerId"}
+  ]
+}
+```
+
+### Business Hours Only
+
+```json
+{
+  "and": [
+    {">=": [{"var": "context.time.hour"}, 9]},
+    {"<=": [{"var": "context.time.hour"}, 17]},
+    {"!": {"in": [{"var": "context.time.dayOfWeek"}, [0, 6]]}}
+  ]
+}
+```
+
+### IP Allowlist
+
+```json
+{
+  "in": [
+    {"var": "context.ip"},
+    ["192.168.1.0/24", "10.0.0.0/8"]
+  ]
+}
+```
+
+### Combined Conditions
+
+```json
+{
+  "or": [
+    {"==": [{"var": "subject.type"}, "admin"]},
+    {
+      "and": [
+        {"==": [{"var": "subject.meta.department"}, "finance"]},
+        {">=": [{"var": "subject.meta.level"}, 3]}
+      ]
+    }
+  ]
+}
+```
+
+## Evaluation Behavior
+
+When a permission has a condition:
+
+1. **No condition** → Permission always applies
+2. **Condition evaluates to `true`** → Permission applies
+3. **Condition evaluates to `false`** → Permission does not apply
+4. **Condition errors** → Permission does not apply (fail-closed)
+
+```typescript
+// Evaluation with context
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane" },
+  scopeId: "scope_production",
+  action: "deploy",
+  context: {
+    time: { hour: 14, dayOfWeek: 3 },
+    ip: "192.168.1.100"
+  }
+});
+```
+
+## Debugging Conditions
+
+The decision output includes condition evaluation details:
+
+```typescript
+const decision = await bedrock.evaluate(input);
+
+console.log(decision.matches);
+// Shows which permissions matched and their conditions
+
+console.log(decision.evaluatedContext);
+// Shows the full context used for evaluation
+
+console.log(decision.explanation);
+// Human-readable explanation of the decision
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep conditions simple">
+    Complex nested conditions are hard to debug. Break them into multiple permissions if needed.
+  </Accordion>
+  <Accordion title="Test conditions thoroughly">
+    Create test cases for all condition branches before deploying.
+  </Accordion>
+  <Accordion title="Use meaningful variable names">
+    Structure your metadata with clear, consistent naming.
+  </Accordion>
+  <Accordion title="Document your conditions">
+    Add descriptions to permissions explaining what the condition does.
+  </Accordion>
+  <Accordion title="Fail closed">
+    If a condition can't be evaluated (missing data), access is denied by default.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Resource Policies" icon="shield-check" href="/resources/resource-policies">
+    Fine-grained policies with subject and context conditions
+  </Card>
+  <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
+    How conditions are evaluated in the permission check flow
+  </Card>
+</CardGroup>

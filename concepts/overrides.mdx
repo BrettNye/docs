@@ -1,0 +1,224 @@
+---
+title: 'Scope Overrides'
+description: 'Fine-tune inherited permissions at child scopes'
+icon: 'sliders'
+---
+
+## What are Scope Overrides?
+
+**Scope overrides** let you modify inherited behavior at child scopes without changing the parent. You can enable or disable roles, permissions, or specific role-permission combinations at any level in your hierarchy.
+
+## Override Types
+
+Bedrock supports three types of overrides:
+
+| Type | What it Controls | Use Case |
+|------|------------------|----------|
+| **Role Override** | Enable/disable an entire role | "Disable Admin role in production" |
+| **Permission Override** | Enable/disable a specific permission | "Disable delete permission in archives" |
+| **Role-Permission Override** | Enable/disable a permission for a specific role | "Editors can't delete in production" |
+
+## Role Overrides
+
+Disable or re-enable an entire role at a child scope:
+
+```bash
+# Disable Admin role in production
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_admin",
+    "state": "disabled"
+  }'
+```
+
+When a role is disabled:
+- All permissions from that role are unavailable in the child scope
+- Role assignments still exist but have no effect
+- Child scopes inherit the disabled state
+
+### Re-enable at Deeper Level
+
+```bash
+# Re-enable Admin for a specific service
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -d '{
+    "childScopeId": "scope_critical_service",
+    "roleId": "role_admin",
+    "state": "enabled"
+  }'
+```
+
+## Permission Overrides
+
+Disable or re-enable a specific permission at a child scope:
+
+```bash
+# Disable delete permission in archived projects
+curl -X POST 'https://api.example.com/scope-overrides/permissions' \
+  -d '{
+    "childScopeId": "scope_archived",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+When a permission is disabled:
+- No role can grant that permission in the child scope
+- Affects all roles that include this permission
+- Child scopes inherit the disabled state
+
+## Role-Permission Overrides
+
+The most granular override—disable a permission for a specific role only:
+
+```bash
+# Editors can't delete in production (but Admins still can)
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_editor",
+    "permissionId": "perm_delete",
+    "state": "disabled"
+  }'
+```
+
+### With Conditions
+
+Add JSON Logic conditions to role-permission overrides:
+
+```bash
+# Editors can only delete during business hours
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_editor",
+    "permissionId": "perm_delete",
+    "state": "enabled",
+    "condition": {
+      "and": [
+        {">=": [{"var": "context.time.hour"}, 9]},
+        {"<=": [{"var": "context.time.hour"}, 17]}
+      ]
+    }
+  }'
+```
+
+## Override Inheritance
+
+Overrides cascade down the scope hierarchy:
+
+```
+Organization (Admin, Editor, Viewer roles)
+    │
+    ├── Development
+    │   └── (all roles work normally)
+    │
+    └── Production [Admin role DISABLED]
+        │
+        ├── Staging
+        │   └── (Admin still disabled - inherited)
+        │
+        └── Critical Service [Admin role ENABLED]
+            └── (Admin works here - override)
+```
+
+## Override States
+
+| State | Meaning |
+|-------|---------|
+| `enabled` | Explicitly enable (override a parent's disable) |
+| `disabled` | Explicitly disable |
+| (no override) | Inherit from parent |
+
+## Common Patterns
+
+### Production Lockdown
+
+```bash
+# Disable destructive permissions in production
+curl -X POST 'https://api.example.com/scope-overrides/permissions/batch' \
+  -d '[
+    {"childScopeId": "scope_production", "permissionId": "perm_delete", "state": "disabled"},
+    {"childScopeId": "scope_production", "permissionId": "perm_drop_table", "state": "disabled"},
+    {"childScopeId": "scope_production", "permissionId": "perm_truncate", "state": "disabled"}
+  ]'
+```
+
+### Agent Restrictions
+
+```bash
+# Agents have read-only in production
+curl -X POST 'https://api.example.com/scope-overrides/role-permissions/batch' \
+  -d '[
+    {"childScopeId": "scope_production", "roleId": "role_agent", "permissionId": "perm_write", "state": "disabled"},
+    {"childScopeId": "scope_production", "roleId": "role_agent", "permissionId": "perm_delete", "state": "disabled"}
+  ]'
+```
+
+### Temporary Elevated Access
+
+```bash
+# Enable admin for maintenance window only
+curl -X POST 'https://api.example.com/scope-overrides/roles' \
+  -d '{
+    "childScopeId": "scope_production",
+    "roleId": "role_admin",
+    "state": "enabled",
+    "condition": {
+      "and": [
+        {">=": [{"var": "context.time.hour"}, 2]},
+        {"<=": [{"var": "context.time.hour"}, 4]}
+      ]
+    }
+  }'
+```
+
+## Querying Overrides
+
+```bash
+# Get all role overrides for a scope
+curl -X GET 'https://api.example.com/scope-overrides/roles?childScopeId=scope_production'
+
+# Get all permission overrides
+curl -X GET 'https://api.example.com/scope-overrides/permissions?childScopeId=scope_production'
+
+# Get all role-permission overrides
+curl -X GET 'https://api.example.com/scope-overrides/role-permissions?childScopeId=scope_production'
+```
+
+## Removing Overrides
+
+```bash
+# Remove an override (inherit from parent again)
+curl -X DELETE 'https://api.example.com/scope-overrides/roles/override_123'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use the most specific override">
+    Prefer role-permission overrides over blanket role or permission disables.
+  </Accordion>
+  <Accordion title="Document your overrides">
+    Keep track of why overrides exist—they can be hard to debug later.
+  </Accordion>
+  <Accordion title="Test override inheritance">
+    Verify that child scopes behave as expected after adding overrides.
+  </Accordion>
+  <Accordion title="Prefer conditions over hard disables">
+    Use conditional overrides for time-based or context-based restrictions.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
+    How overrides affect permission evaluation
+  </Card>
+  <Card title="Conditional Permissions" icon="code" href="/concepts/conditional-permissions">
+    Add conditions to overrides
+  </Card>
+</CardGroup>

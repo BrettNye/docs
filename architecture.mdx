@@ -1,0 +1,227 @@
+---
+title: 'Architecture Overview'
+description: 'How Bedrock components work together'
+icon: 'diagram-project'
+---
+
+## System Architecture
+
+Bedrock is a modular authorization engine with three main layers:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        YOUR APPLICATION                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐        │
+│   │  REST API   │    │ TypeScript  │    │   Direct    │        │
+│   │  Endpoints  │    │    SDK      │    │   Engine    │        │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘        │
+│          │                  │                  │                │
+│          └──────────────────┼──────────────────┘                │
+│                             │                                   │
+│                    ┌────────▼────────┐                          │
+│                    │  BedrockEngine  │                          │
+│                    │   (Core Logic)  │                          │
+│                    └────────┬────────┘                          │
+│                             │                                   │
+│                    ┌────────▼────────┐                          │
+│                    │ BedrockStorage  │                          │
+│                    │   (Interface)   │                          │
+│                    └────────┬────────┘                          │
+│                             │                                   │
+│          ┌──────────────────┼──────────────────┐                │
+│          │                  │                  │                │
+│   ┌──────▼──────┐    ┌──────▼──────┐    ┌──────▼──────┐        │
+│   │  PostgreSQL │    │  In-Memory  │    │   Custom    │        │
+│   │   Storage   │    │   Storage   │    │   Storage   │        │
+│   └─────────────┘    └─────────────┘    └─────────────┘        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### BedrockEngine
+
+The central authorization engine that:
+- Manages all authorization entities (scopes, subjects, roles, permissions, resources)
+- Evaluates permission checks
+- Handles inheritance and overrides
+- Processes resource policies and collections
+
+```typescript
+import { BedrockEngine } from '@bedrock/core';
+import { PostgresStorage } from '@bedrock/storage-postgres';
+
+const storage = new PostgresStorage(connectionString);
+const engine = new BedrockEngine(storage);
+```
+
+### BedrockStorage
+
+The storage interface that abstracts data persistence:
+
+| Implementation | Use Case |
+|----------------|----------|
+| `PostgresStorage` | Production deployments |
+| `InMemoryStorage` | Testing and development |
+| Custom | Your own database |
+
+### REST API
+
+Optional HTTP layer for language-agnostic access:
+
+```bash
+# Evaluate a permission
+POST /evaluate
+{
+  "actor": { "subjectId": "user_jane", "subjectType": "user" },
+  "scopeId": "scope_production",
+  "action": "deploy",
+  "resource": { "resourceType": "service" }
+}
+```
+
+## Data Model
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         SCOPE LAYER                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ScopeType ──defines──▶ Scope ◀──hierarchy──▶ Scope           │
+│       │                    │                                    │
+│       │                    │                                    │
+│       ▼                    ▼                                    │
+│   (DEFINE/MERGE)      Membership ◀── Subject                   │
+│                            │                                    │
+│                            ▼                                    │
+│                     RoleAssignment ──▶ Role ──▶ Permission     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       RESOURCE LAYER                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ResourceType ──defines──▶ Resource ◀──hierarchy──▶ Resource  │
+│                                │                                │
+│                                │                                │
+│                    ┌───────────┼───────────┐                    │
+│                    │           │           │                    │
+│                    ▼           ▼           ▼                    │
+│              ScopeLink    Collection    Policy                  │
+│                                │           │                    │
+│                                └─────┬─────┘                    │
+│                                      │                          │
+│                                      ▼                          │
+│                              Policy Target                      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                         TAG LAYER                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   TagGroup ──contains──▶ Tag ──assignment──▶ Resource/Subject  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Evaluation Flow
+
+When `engine.evaluate()` is called:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      EVALUATION INPUT                           │
+│  { actor, scopeId, action, resource, context }                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  1. RESOURCE POLICIES                                           │
+│     • Find policies targeting this resource                     │
+│     • Find collections matching this resource                   │
+│     • Evaluate subject/context conditions                       │
+│     • If match → return allow/deny                              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. RESOURCE HIERARCHY                                          │
+│     • Check parent resources (if cascade: inherit)              │
+│     • Traverse ancestors until permission found                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. ROLE-BASED PERMISSIONS                                      │
+│     • Resolve subject memberships in scope hierarchy            │
+│     • Collect role assignments                                  │
+│     • Gather permissions from roles                             │
+│     • Apply scope overrides                                     │
+│     • Match action/resource pattern                             │
+│     • Evaluate conditional permissions                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      EVALUATION OUTPUT                          │
+│  { allowed, matches, explanation, evaluatedPolicy, ... }        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## ID Format
+
+All Bedrock entities use prefixed UUIDv7 IDs:
+
+| Entity | Prefix | Example |
+|--------|--------|---------|
+| Scope | `scope_` | `scope_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Subject | `subject_` | `subject_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Role | `role_` | `role_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Permission | `perm_` | `perm_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Resource | `resource_` | `resource_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Collection | `collection_` | `collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Policy | `policy_` | `policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+| Scope Link | `rsl_` | `rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b` |
+
+## Deployment Options
+
+### Embedded Library
+
+Use Bedrock directly in your application:
+
+```typescript
+import { BedrockEngine } from '@bedrock/core';
+import { PostgresStorage } from '@bedrock/storage-postgres';
+
+const engine = new BedrockEngine(new PostgresStorage(process.env.DATABASE_URL));
+```
+
+### Standalone Service
+
+Deploy as a separate authorization service:
+
+```
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│   App 1     │──────│   Bedrock   │──────│  PostgreSQL │
+├─────────────┤      │   Service   │      └─────────────┘
+│   App 2     │──────│             │
+├─────────────┤      │  REST API   │
+│   App 3     │──────│             │
+└─────────────┘      └─────────────┘
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Set up Bedrock in your application
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts">
+    Deep dive into authorization concepts
+  </Card>
+</CardGroup>

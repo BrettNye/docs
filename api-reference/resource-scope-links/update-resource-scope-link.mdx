@@ -1,0 +1,57 @@
+---
+title: 'Update Resource Scope Link'
+api: 'PATCH /resource-scope-links/{id}'
+description: 'Update a resource scope link'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource scope link ID
+</ParamField>
+
+## Request Body
+
+<ParamField body="linkType" type="string">
+  Type of link: `share`, `alias`, or `mirror`
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Metadata for this link (replaces existing metadata)
+</ParamField>
+
+## Response
+
+Returns the updated resource scope link object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/resource-scope-links/rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "metadata": {
+      "sharedBy": "user_jane",
+      "accessLevel": "read-write",
+      "updatedAt": "2024-01-20T10:00:00Z"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "resourceId": "resource_doc_123",
+  "scopeId": "scope_sales",
+  "linkType": "share",
+  "metadata": {
+    "sharedBy": "user_jane",
+    "accessLevel": "read-write",
+    "updatedAt": "2024-01-20T10:00:00Z"
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

@@ -1,0 +1,40 @@
+---
+title: 'Get Resource Collection'
+api: 'GET /resource-collections/{id}'
+description: 'Get a resource collection by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource collection ID
+</ParamField>
+
+## Response
+
+Returns the resource collection object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-collections/collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "scopeId": "scope_org",
+  "resourceTypeId": "rtype_document",
+  "name": "Finance Documents",
+  "description": "All documents tagged with finance department",
+  "matchDefinition": {
+    "tags": {
+      "department": "finance"
+    }
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

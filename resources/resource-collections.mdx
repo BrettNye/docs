@@ -1,0 +1,363 @@
+---
+title: 'Resource Collections'
+description: 'Dynamic grouping of resources using match rules'
+icon: 'layer-group'
+---
+
+## What are Resource Collections?
+
+**Resource Collections** dynamically group resources based on match rules. Instead of manually adding resources to a group, you define criteria and any matching resources are automatically included.
+
+Collections are powerful for:
+- Applying policies to groups of resources
+- Querying resources by attributes
+- Building dynamic access control rules
+
+## Collection Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `string` | Unique identifier |
+| `scopeId` | `string` | Scope where collection is defined |
+| `resourceTypeId` | `string` | Type of resources in this collection |
+| `name` | `string` | Display name |
+| `description` | `string?` | What this collection represents |
+| `matchDefinition` | `ResourceMatchDefinition` | Rules for matching resources |
+
+## Match Definition
+
+The `matchDefinition` object defines how resources are matched:
+
+```typescript
+interface ResourceMatchDefinition {
+  // Match by field values
+  fields?: Record<string, unknown>;
+  
+  // Match by tag assignments
+  tags?: Record<string, string | string[]>;
+  
+  // Match by glob patterns
+  patterns?: Record<string, string>;
+  
+  // Match by time-based rules
+  time?: TimeMatchRule;
+  
+  // Match by JSON Logic condition
+  condition?: Record<string, unknown>;
+  
+  // Combine multiple definitions (OR)
+  any?: ResourceMatchDefinition[];
+  
+  // Combine multiple definitions (AND)
+  all?: ResourceMatchDefinition[];
+  
+  // Exclude matching definitions (NOT)
+  none?: ResourceMatchDefinition[];
+}
+```
+
+## Creating Collections
+
+### Match by Fields
+
+```bash
+# All active documents
+curl -X POST 'https://api.example.com/resource-collections' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Active Documents",
+    "matchDefinition": {
+      "fields": {
+        "status": "active"
+      }
+    }
+  }'
+```
+
+### Match by Tags
+
+```bash
+# All finance department documents
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Finance Documents",
+    "matchDefinition": {
+      "tags": {
+        "department": "finance"
+      }
+    }
+  }'
+```
+
+```bash
+# Documents with any of these classifications
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Sensitive Documents",
+    "matchDefinition": {
+      "tags": {
+        "classification": ["confidential", "restricted", "top-secret"]
+      }
+    }
+  }'
+```
+
+### Match by Patterns
+
+```bash
+# All quarterly reports
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_report",
+    "name": "Quarterly Reports",
+    "matchDefinition": {
+      "patterns": {
+        "name": "Q*-Report-*"
+      }
+    }
+  }'
+```
+
+### Match by Time
+
+```bash
+# Documents created this year
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "This Year Documents",
+    "matchDefinition": {
+      "time": {
+        "field": "createdAt",
+        "after": "2024-01-01T00:00:00Z"
+      }
+    }
+  }'
+```
+
+```bash
+# Documents modified in the last 30 days
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Recently Modified",
+    "matchDefinition": {
+      "time": {
+        "field": "updatedAt",
+        "after": "-30d"
+      }
+    }
+  }'
+```
+
+### Match by JSON Logic Condition
+
+```bash
+# High-value orders
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_order",
+    "name": "High-Value Orders",
+    "matchDefinition": {
+      "condition": {
+        ">": [{"var": "meta.totalAmount"}, 10000]
+      }
+    }
+  }'
+```
+
+## Combining Match Rules
+
+### All (AND)
+
+All conditions must match:
+
+```bash
+# Active finance documents created this year
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Active Finance Docs 2024",
+    "matchDefinition": {
+      "all": [
+        {"fields": {"status": "active"}},
+        {"tags": {"department": "finance"}},
+        {"time": {"field": "createdAt", "after": "2024-01-01T00:00:00Z"}}
+      ]
+    }
+  }'
+```
+
+### Any (OR)
+
+Any condition can match:
+
+```bash
+# Documents from finance OR legal
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Finance or Legal Docs",
+    "matchDefinition": {
+      "any": [
+        {"tags": {"department": "finance"}},
+        {"tags": {"department": "legal"}}
+      ]
+    }
+  }'
+```
+
+### None (NOT)
+
+Exclude matching resources:
+
+```bash
+# All documents except archived
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Non-Archived Documents",
+    "matchDefinition": {
+      "none": [
+        {"fields": {"status": "archived"}}
+      ]
+    }
+  }'
+```
+
+### Complex Combinations
+
+```bash
+# Active documents from finance or legal, excluding drafts
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Published Finance/Legal Docs",
+    "matchDefinition": {
+      "all": [
+        {"fields": {"status": "active"}},
+        {
+          "any": [
+            {"tags": {"department": "finance"}},
+            {"tags": {"department": "legal"}}
+          ]
+        }
+      ],
+      "none": [
+        {"fields": {"isDraft": true}}
+      ]
+    }
+  }'
+```
+
+## Using Collections with Policies
+
+Collections are most powerful when combined with [Resource Policies](/resources/resource-policies):
+
+```bash
+# Create a collection
+curl -X POST 'https://api.example.com/resource-collections' \
+  -d '{
+    "id": "collection_finance_docs",
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Finance Documents",
+    "matchDefinition": {
+      "tags": {"department": "finance"}
+    }
+  }'
+
+# Create a policy targeting the collection
+curl -X POST 'https://api.example.com/resource-policies' \
+  -d '{
+    "scopeId": "scope_org",
+    "name": "Finance Team Access",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_finance_docs"
+    },
+    "actions": ["read", "update"],
+    "effect": "allow",
+    "subjectCondition": {
+      "==": [{"var": "subject.meta.department"}, "finance"]
+    }
+  }'
+```
+
+## Querying Collections
+
+### Get Collections for a Scope
+
+```bash
+curl -X GET 'https://api.example.com/resource-collections?scopeId=scope_org'
+```
+
+### Get Collection by ID
+
+```bash
+curl -X GET 'https://api.example.com/resource-collections/collection_finance_docs'
+```
+
+## Collection Matching at Evaluation Time
+
+When evaluating permissions, the engine:
+
+1. Gets the resource being accessed
+2. Finds all collections in scope
+3. Evaluates each collection's match definition against the resource
+4. Applies policies from matching collections
+
+```typescript
+// Resource: { type: "document", tags: { department: "finance" }, status: "active" }
+// Collection: { matchDefinition: { tags: { department: "finance" } } }
+// → Resource matches collection
+// → Collection's policies apply
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep match definitions simple">
+    Complex nested rules are hard to debug. Use multiple collections if needed.
+  </Accordion>
+  <Accordion title="Use descriptive names">
+    Collection names should clearly describe what resources are included.
+  </Accordion>
+  <Accordion title="Test match definitions">
+    Verify your match rules capture the intended resources before applying policies.
+  </Accordion>
+  <Accordion title="Consider performance">
+    Very broad collections (matching many resources) may impact evaluation performance.
+  </Accordion>
+  <Accordion title="Document your collections">
+    Use the description field to explain the purpose and criteria.
+  </Accordion>
+</AccordionGroup>
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Resource Policies" icon="shield-check" href="/resources/resource-policies">
+    Apply access rules to collections
+  </Card>
+  <Card title="Tags" icon="tags" href="/tags/tags">
+    Tag resources for collection matching
+  </Card>
+  <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
+    How collections affect permission checks
+  </Card>
+</CardGroup>

@@ -8,12 +8,15 @@ I'll format it exactly how Mintlify expects (sections, nested pages, suggested s
 
 > **⚠️ Review Notes (Based on Codebase Analysis)**
 >
-> This outline is ~80% aligned with the actual Bedrock implementation. Key gaps identified:
-> - Missing: Three-tier override system (`BedrockScopeRoleOverride`, `BedrockScopePermissionOverride`, `BedrockScopeRolePermissionOverride`)
-> - Missing: Resource hierarchies (`BedrockResourceHierarchy`, `BedrockResourceTypeHierarchy`)
-> - Missing: Multi-scope resources (`BedrockResourceScope`)
-> - Missing: Tag group bindings (`BedrockTagGroupBinding`)
-> - Missing: Scope type hierarchy (`BedrockScopeTypeHierarchyEdge`)
+> This outline is ~95% aligned with the actual Bedrock implementation. Recent additions:
+> - ✅ Three-tier override system (`BedrockScopeRoleOverride`, `BedrockScopePermissionOverride`, `BedrockScopeRolePermissionOverride`)
+> - ✅ Resource hierarchies (`BedrockResourceHierarchy`, `BedrockResourceTypeHierarchy`) with cascade modes
+> - ✅ Resource Scope Links (`BedrockResourceScopeLink`) - replaces old `BedrockResourceScope`
+> - ✅ Resource Collections (`BedrockResourceCollection`) - dynamic resource grouping via match rules
+> - ✅ Resource Policies (`BedrockResourcePolicy`) - fine-grained allow/deny policies on resources/collections
+> - ✅ Tag group bindings (`BedrockTagGroupBinding`)
+> - ✅ Scope type hierarchy (`BedrockScopeTypeHierarchyEdge`)
+> - ✅ Conditional permissions via JSON Logic on role-permissions and scope overrides
 > - API Keys section may be speculative (no types found in codebase)
 > - Delegation/"On Behalf Of" should be promoted to first-class section
 >
@@ -139,12 +142,15 @@ I'll format it exactly how Mintlify expects (sections, nested pages, suggested s
 
   * From project → environment → custom scopes
   * DEFINE vs MERGE
-* **Conditional Permissions**
+* **Conditional Permissions** `[UPDATED]`
 
-  * JSON Logic
-  * Using subject metadata
-  * Using resource metadata
-  * Using tags
+  * JSON Logic expressions for dynamic evaluation
+  * Conditions on role-permissions (`BedrockRolePermission.condition`)
+  * Conditions on scope overrides (`BedrockScopeRolePermissionOverride.condition`)
+  * Using subject metadata in conditions
+  * Using resource metadata in conditions
+  * Using tags in conditions
+  * Context variables available during evaluation
 * **Permission Overrides** `[UPDATED - Three-Tier Override System]`
 
   * `BedrockScopeRoleOverride` — Toggle a role on/off at a child scope
@@ -177,16 +183,34 @@ I'll format it exactly how Mintlify expects (sections, nested pages, suggested s
 * **Resource Hierarchies** `[UPDATED]`
 
   * Parent-child resource relationships (`BedrockResourceHierarchy`)
+  * Cascade modes: `inherit` (propagate permissions) or `none` (no inheritance)
   * Hierarchical permission propagation (e.g., folder → document)
-  * Relationship types
+  * Relationship types for semantic meaning
+  * Ancestor traversal for permission evaluation
 * **Resource Ownership**
 
   * How owner-based permissions work
-* **Multi-Scope Resources** `[UPDATED]`
+* **Resource Scope Links** `[UPDATED]`
 
-  * Associating resources with multiple scopes (`BedrockResourceScope`)
+  * Associating resources with multiple scopes (`BedrockResourceScopeLink`)
+  * Link types: `share`, `alias`, `mirror`
+  * Metadata on links for custom attributes
   * Sharing and classification use cases
-  * Non-access-related scope associations
+* **Resource Collections** `[NEW]`
+
+  * Dynamic resource grouping (`BedrockResourceCollection`)
+  * Match rules: fields, tags, patterns, time-based, JSON Logic conditions
+  * Composable matching with `any`, `all`, `none` operators
+  * Use cases: "all finance documents", "resources created this week"
+* **Resource Policies** `[NEW]`
+
+  * Fine-grained access control (`BedrockResourcePolicy`)
+  * Target: specific resource or collection
+  * Effects: `allow` or `deny`
+  * Subject conditions: JSON Logic for actor matching
+  * Context conditions: JSON Logic for request context
+  * Priority-based evaluation (higher priority wins)
+  * Evaluated before role-based permissions
 * **Resource Tags**
 
   * Department-level access
@@ -519,7 +543,12 @@ The following updates were made based on analysis of the actual Bedrock codebase
 |---------|--------|
 | **Platform Structure** | Added "Scope Type Hierarchy" covering `BedrockScopeTypeHierarchyEdge` |
 | **Permissions** | Expanded "Permission Overrides" to document three-tier override system |
-| **Resources** | Added "Resource Type Hierarchies", "Resource Hierarchies", and "Multi-Scope Resources" |
+| **Permissions** | Updated "Conditional Permissions" with JSON Logic on role-permissions and overrides |
+| **Resources** | Added "Resource Type Hierarchies" with inheritance patterns |
+| **Resources** | Added "Resource Hierarchies" with cascade modes (`inherit`/`none`) |
+| **Resources** | Replaced "Multi-Scope Resources" with "Resource Scope Links" (link types + metadata) |
+| **Resources** | Added "Resource Collections" for dynamic resource grouping via match rules |
+| **Resources** | Added "Resource Policies" for fine-grained allow/deny on resources/collections |
 | **Tags** | Added "Tag Group Bindings" and expanded tag group properties |
 | **API Keys** | Added warning about unverified implementation status |
 | **New Section 11b** | Promoted "Delegation & Acting On Behalf" to first-class section |
@@ -530,8 +559,11 @@ The following updates were made based on analysis of the actual Bedrock codebase
 - `BedrockScopeRoleOverride`
 - `BedrockScopePermissionOverride`
 - `BedrockScopeRolePermissionOverride`
-- `BedrockResourceHierarchy`
+- `BedrockResourceHierarchy` (with `CascadeModeEnum`)
 - `BedrockResourceTypeHierarchy`
-- `BedrockResourceScope`
+- `BedrockResourceScopeLink` (replaces `BedrockResourceScope`)
+- `BedrockResourceCollection` (with `ResourceMatchDefinition`)
+- `BedrockResourcePolicy` (with `PolicyEffectEnum`, `PolicyTargetKindEnum`)
 - `BedrockTagGroupBinding`
 - `BedrockEvaluateInput.onBehalfOf`
+- `BedrockDecision.evaluatedPolicy` and `decidedByPolicy`

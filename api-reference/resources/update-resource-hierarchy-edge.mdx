@@ -1,0 +1,52 @@
+---
+title: 'Update Resource Hierarchy Edge'
+api: 'PATCH /resource-hierarchy'
+description: 'Update a resource hierarchy edge (e.g., change cascade mode)'
+---
+
+## Request Body
+
+<ParamField body="parentResourceId" type="string" required>
+  The parent resource ID
+</ParamField>
+
+<ParamField body="childResourceId" type="string" required>
+  The child resource ID
+</ParamField>
+
+<ParamField body="cascade" type="string">
+  Cascade mode: `inherit` or `none`
+</ParamField>
+
+<ParamField body="relationshipType" type="string">
+  Type of relationship (e.g., `contains`, `references`)
+</ParamField>
+
+## Response
+
+Returns the updated hierarchy edge.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/resource-hierarchy' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "parentResourceId": "resource_folder_123",
+    "childResourceId": "resource_doc_456",
+    "cascade": "none"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "parentResourceId": "resource_folder_123",
+  "childResourceId": "resource_doc_456",
+  "relationshipType": "contains",
+  "cascade": "none",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

@@ -1,0 +1,49 @@
+---
+title: 'Get Resource Children'
+api: 'GET /resource-hierarchy/children/{resourceId}'
+description: 'Get direct child resources in the hierarchy'
+---
+
+## Path Parameters
+
+<ParamField path="resourceId" type="string" required>
+  The parent resource ID
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="relationshipType" type="string">
+  Filter by relationship type (e.g., `contains`, `references`)
+</ParamField>
+
+## Response
+
+Returns an array of child resources.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-hierarchy/children/resource_folder_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "resource_doc_456",
+    "resourceTypeId": "rtype_document",
+    "displayName": "API Design Doc",
+    "relationshipType": "contains",
+    "cascade": "inherit"
+  },
+  {
+    "id": "resource_doc_789",
+    "resourceTypeId": "rtype_document",
+    "displayName": "Architecture Overview",
+    "relationshipType": "contains",
+    "cascade": "inherit"
+  }
+]
+```
+</ResponseExample>

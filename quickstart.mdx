@@ -5,12 +5,15 @@ description: 'Set up Bedrock authorization in under 5 minutes'
 
 ## Overview
 
-This guide walks you through setting up a basic authorization structure with Bedrock using **batch operations** for efficiency. By the end, you'll have:
+This guide walks you through setting up a complete authorization system with Bedrock. By the end, you'll have:
 
 - Scope types defining your organizational hierarchy
 - Scopes representing your organization and teams
 - Roles and permissions for access control
-- Both a user and an AI agent with appropriate access
+- A user and an AI agent with appropriate access
+- Resource collections for dynamic grouping
+- Resource policies that restrict AI agents from confidential data
+- Working permission evaluation
 
 <Info>
   **Batch Operations**: All examples use batch endpoints to minimize API calls. IDs use a namespaced UUIDv7 format (e.g., `scope_type_org`). You can provide your own IDs for in-batch references.
@@ -139,28 +142,161 @@ curl -X POST 'https://api.example.com/role-assignments/batch' \
 ```
 
 <Check>
-  **Done!** You now have a user with Editor access and an AI agent with Viewer access to the Engineering team - all set up in just 10 API calls!
+  You now have a user with Editor access and an AI agent with Viewer access to the Engineering team!
+</Check>
+
+## Step 5: Add Resources and Policies
+
+Create resources, a collection, and a policy for fine-grained control:
+
+```bash
+# Create a resource type and some resources
+curl -X POST 'https://api.example.com/resource-types/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "rtype_document", "name": "Document", "scopeId": "scope_acme"}
+  ]'
+
+curl -X POST 'https://api.example.com/resources/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {"id": "resource_roadmap", "resourceTypeId": "rtype_document", "scopeId": "scope_engineering", "externalResourceId": "roadmap-2024", "displayName": "2024 Roadmap"},
+    {"id": "resource_budget", "resourceTypeId": "rtype_document", "scopeId": "scope_engineering", "externalResourceId": "budget-confidential", "displayName": "Budget (Confidential)"}
+  ]'
+
+# Create a tag for confidential documents
+curl -X POST 'https://api.example.com/tags' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"id": "tag_confidential", "key": "classification", "value": "confidential", "scopeId": "scope_acme"}'
+
+# Tag the budget document
+curl -X POST 'https://api.example.com/tag-assignments' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"tagId": "tag_confidential", "modelType": "resource", "modelId": "resource_budget"}'
+
+# Create a collection for confidential documents
+curl -X POST 'https://api.example.com/resource-collections' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "collection_confidential",
+    "scopeId": "scope_acme",
+    "resourceTypeId": "rtype_document",
+    "name": "Confidential Documents",
+    "matchDefinition": {
+      "tags": {"classification": "confidential"}
+    }
+  }'
+
+# Create a policy: deny agents access to confidential documents
+curl -X POST 'https://api.example.com/resource-policies' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "policy_no_agent_confidential",
+    "scopeId": "scope_acme",
+    "name": "Block Agents from Confidential",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_confidential"
+    },
+    "actions": ["*"],
+    "effect": "deny",
+    "priority": 100,
+    "subjectCondition": {
+      "==": [{"var": "subject.type"}, "agent"]
+    }
+  }'
+```
+
+## Step 6: Evaluate Permissions
+
+Test your authorization setup:
+
+```bash
+# Jane can read the roadmap
+curl -X POST 'https://api.example.com/evaluate' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "actor": {"subjectId": "subject_jane", "subjectType": "user"},
+    "scopeId": "scope_engineering",
+    "action": "read",
+    "resource": {"resourceId": "resource_roadmap"}
+  }'
+# → {"allowed": true, "explanation": "Allowed via role Editor..."}
+
+# Jane can read the confidential budget
+curl -X POST 'https://api.example.com/evaluate' \
+  -d '{
+    "actor": {"subjectId": "subject_jane", "subjectType": "user"},
+    "scopeId": "scope_engineering",
+    "action": "read",
+    "resource": {"resourceId": "resource_budget"}
+  }'
+# → {"allowed": true}
+
+# Agent CANNOT read the confidential budget (blocked by policy)
+curl -X POST 'https://api.example.com/evaluate' \
+  -d '{
+    "actor": {"subjectId": "subject_agent", "subjectType": "agent"},
+    "scopeId": "scope_engineering",
+    "action": "read",
+    "resource": {"resourceId": "resource_budget"}
+  }'
+# → {"allowed": false, "decidedByPolicy": true, "explanation": "Denied by policy: Block Agents from Confidential"}
+
+# Agent CAN read the non-confidential roadmap
+curl -X POST 'https://api.example.com/evaluate' \
+  -d '{
+    "actor": {"subjectId": "subject_agent", "subjectType": "agent"},
+    "scopeId": "scope_engineering",
+    "action": "read",
+    "resource": {"resourceId": "resource_roadmap"}
+  }'
+# → {"allowed": true}
+```
+
+<Check>
+  **Done!** You've set up a complete authorization system with role-based permissions AND resource-level policies that restrict AI agents from accessing confidential documents.
 </Check>
 
 ## What You Built
 
 ```
 Acme Corp (Organization)
+├── Roles: Viewer (read), Editor (read, write)
+├── Collection: Confidential Documents (tag: classification=confidential)
+├── Policy: Block Agents from Confidential
+│
 └── Engineering (Team)
-    ├── Jane Doe (User) → Editor Role → read, write
-    └── Coding Assistant (Agent) → Viewer Role → read only
+    ├── Jane Doe (User) → Editor → can read/write all documents
+    ├── Coding Assistant (Agent) → Viewer → can read non-confidential only
+    │
+    ├── 2024 Roadmap (Document) → accessible to all
+    └── Budget (Document, confidential) → blocked for agents
 ```
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="User Governance" icon="user-shield" href="/guides/user-governance">
-    Deep dive into managing user permissions
+  <Card title="Resource Policies" icon="shield-check" href="/resources/resource-policies">
+    Fine-grained allow/deny on resources
+  </Card>
+  <Card title="Resource Collections" icon="layer-group" href="/resources/resource-collections">
+    Dynamic resource grouping
+  </Card>
+  <Card title="Conditional Permissions" icon="code" href="/concepts/conditional-permissions">
+    JSON Logic for dynamic access
   </Card>
   <Card title="Agent Governance" icon="robot" href="/guides/agent-governance">
-    Learn advanced agent permission patterns
+    Advanced agent permission patterns
   </Card>
-  <Card title="Scope Overrides" icon="sliders" href="/guides/scope-overrides">
+  <Card title="Scope Overrides" icon="sliders" href="/concepts/overrides">
     Fine-tune inherited permissions
   </Card>
   <Card title="API Reference" icon="terminal" href="/api-reference/introduction">

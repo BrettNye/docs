@@ -1,0 +1,28 @@
+---
+title: 'Delete Resource Scope Link'
+api: 'DELETE /resource-scope-links/{id}'
+description: 'Delete a resource scope link'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource scope link ID
+</ParamField>
+
+## Response
+
+Returns 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE 'https://api.example.com/resource-scope-links/rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```
+204 No Content
+```
+</ResponseExample>

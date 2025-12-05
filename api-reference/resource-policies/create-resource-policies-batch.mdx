@@ -1,0 +1,118 @@
+---
+title: 'Create Resource Policies (Batch)'
+api: 'POST /resource-policies/batch'
+description: 'Create multiple resource policies at once'
+---
+
+## Request Body
+
+Array of resource policy objects to create.
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Format: `policy_{uuidv7}`
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope where policy is defined
+</ParamField>
+
+<ParamField body="[].name" type="string" required>
+  Display name for the policy
+</ParamField>
+
+<ParamField body="[].target" type="object" required>
+  Resource or collection to target
+</ParamField>
+
+<ParamField body="[].actions" type="array" required>
+  Actions this policy applies to
+</ParamField>
+
+<ParamField body="[].effect" type="string" required>
+  Policy effect: `allow` or `deny`
+</ParamField>
+
+<ParamField body="[].priority" type="number" default="0">
+  Higher priority policies are evaluated first
+</ParamField>
+
+<ParamField body="[].subjectCondition" type="object">
+  JSON Logic condition to match the actor
+</ParamField>
+
+<ParamField body="[].contextCondition" type="object">
+  JSON Logic condition to match request context
+</ParamField>
+
+## Response
+
+Returns an array of created resource policy objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/resource-policies/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "scopeId": "scope_org",
+      "name": "Finance Read Access",
+      "target": {
+        "kind": "collection",
+        "collectionId": "collection_finance_docs"
+      },
+      "actions": ["read"],
+      "effect": "allow",
+      "subjectCondition": {
+        "==": [{"var": "subject.meta.department"}, "finance"]
+      }
+    },
+    {
+      "scopeId": "scope_org",
+      "name": "Block Archived",
+      "target": {
+        "kind": "collection",
+        "collectionId": "collection_archived"
+      },
+      "actions": ["*"],
+      "effect": "deny",
+      "priority": 100
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "scopeId": "scope_org",
+    "name": "Finance Read Access",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_finance_docs"
+    },
+    "actions": ["read"],
+    "effect": "allow",
+    "subjectCondition": {
+      "==": [{"var": "subject.meta.department"}, "finance"]
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "scopeId": "scope_org",
+    "name": "Block Archived",
+    "target": {
+      "kind": "collection",
+      "collectionId": "collection_archived"
+    },
+    "actions": ["*"],
+    "effect": "deny",
+    "priority": 100,
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

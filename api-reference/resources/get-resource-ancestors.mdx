@@ -1,0 +1,47 @@
+---
+title: 'Get Resource Ancestors'
+api: 'GET /resource-hierarchy/ancestors/{resourceId}'
+description: 'Get all ancestor resources in the hierarchy'
+---
+
+## Path Parameters
+
+<ParamField path="resourceId" type="string" required>
+  The resource ID to get ancestors for
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="cascadeOnly" type="boolean" default="false">
+  Only return ancestors with `cascade: inherit`
+</ParamField>
+
+## Response
+
+Returns an array of ancestor resources, ordered from immediate parent to root.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-hierarchy/ancestors/resource_doc_456' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "resource_folder_123",
+    "resourceTypeId": "rtype_folder",
+    "displayName": "Engineering Docs",
+    "cascade": "inherit"
+  },
+  {
+    "id": "resource_workspace_root",
+    "resourceTypeId": "rtype_workspace",
+    "displayName": "Workspace",
+    "cascade": "inherit"
+  }
+]
+```
+</ResponseExample>

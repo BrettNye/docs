@@ -24,6 +24,12 @@ Bedrock is an authorization engine built around a few core primitives that compo
   <Card title="Permissions" icon="key" href="/concepts/permissions">
     Fine-grained access rights for actions on resources
   </Card>
+  <Card title="Conditional Permissions" icon="code" href="/concepts/conditional-permissions">
+    Dynamic access control with JSON Logic expressions
+  </Card>
+  <Card title="Scope Overrides" icon="sliders" href="/concepts/overrides">
+    Fine-tune inherited permissions at child scopes
+  </Card>
   <Card title="Evaluation" icon="gears" href="/concepts/evaluation">
     How Bedrock decides if an action is allowed
   </Card>
@@ -35,22 +41,25 @@ At its core, Bedrock answers one question:
 
 > **Can this subject perform this action on this resource in this scope?**
 
-To answer this, Bedrock evaluates:
+To answer this, Bedrock evaluates in order:
 
-1. **Subject** — Who is making the request? (user, agent, service)
-2. **Scope** — Where in the hierarchy is this happening?
-3. **Role** — What roles does the subject have in this scope?
-4. **Permission** — Do any of those roles grant the requested action?
-5. **Conditions** — Do any conditional rules (tags, metadata) apply?
+1. **Resource Policies** — Are there explicit allow/deny policies on this resource?
+2. **Resource Hierarchy** — Does a parent resource grant access (with cascade)?
+3. **Role-Based Permissions** — Does the subject's role grant the action?
+4. **Conditions** — Do JSON Logic conditions on permissions/policies pass?
 
 ```
-Subject ──membership──▶ Scope
-                          │
-                          ▼
-                        Role ──has──▶ Permission
-                                          │
-                                          ▼
-                                    Action on Resource
+                    ┌─────────────────────┐
+                    │  Resource Policies  │ ◀── Highest priority
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │ Resource Hierarchy  │ ◀── Inherit from parents
+                    └──────────┬──────────┘
+                               │
+                    ┌──────────▼──────────┐
+Subject ──membership──▶ Scope ──▶ Role ──▶ Permission
+                    └─────────────────────┘
 ```
 
 ## Key Relationships

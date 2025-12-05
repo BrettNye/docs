@@ -1,0 +1,62 @@
+---
+title: 'Get Resource Scope Links'
+api: 'GET /resource-scope-links'
+description: 'Get resource scope links by resource or scope'
+---
+
+## Query Parameters
+
+<ParamField query="resourceId" type="string">
+  Filter by resource ID
+</ParamField>
+
+<ParamField query="scopeId" type="string">
+  Filter by scope ID
+</ParamField>
+
+<ParamField query="linkType" type="string">
+  Filter by link type: `share`, `alias`, or `mirror`
+</ParamField>
+
+<Note>
+  At least one of `resourceId` or `scopeId` is required.
+</Note>
+
+## Response
+
+Returns an array of resource scope link objects.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-scope-links?resourceId=resource_doc_123' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_sales",
+    "linkType": "share",
+    "metadata": {
+      "sharedBy": "user_jane",
+      "accessLevel": "read-only"
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "rsl_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "resourceId": "resource_doc_123",
+    "scopeId": "scope_marketing",
+    "linkType": "share",
+    "metadata": {
+      "sharedBy": "user_jane"
+    },
+    "createdAt": "2024-01-15T11:00:00Z"
+  }
+]
+```
+</ResponseExample>

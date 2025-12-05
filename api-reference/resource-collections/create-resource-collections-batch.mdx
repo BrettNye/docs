@@ -1,0 +1,90 @@
+---
+title: 'Create Resource Collections (Batch)'
+api: 'POST /resource-collections/batch'
+description: 'Create multiple resource collections at once'
+---
+
+## Request Body
+
+Array of resource collection objects to create.
+
+<ParamField body="[].id" type="string">
+  Optional client-provided ID. Format: `collection_{uuidv7}`
+</ParamField>
+
+<ParamField body="[].scopeId" type="string" required>
+  ID of the scope where collection is defined
+</ParamField>
+
+<ParamField body="[].resourceTypeId" type="string" required>
+  ID of the resource type for this collection
+</ParamField>
+
+<ParamField body="[].name" type="string" required>
+  Display name for the collection
+</ParamField>
+
+<ParamField body="[].description" type="string">
+  Description of what this collection represents
+</ParamField>
+
+<ParamField body="[].matchDefinition" type="object" required>
+  Rules for matching resources to this collection
+</ParamField>
+
+## Response
+
+Returns an array of created resource collection objects.
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://api.example.com/resource-collections/batch' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "scopeId": "scope_org",
+      "resourceTypeId": "rtype_document",
+      "name": "Finance Documents",
+      "matchDefinition": {
+        "tags": { "department": "finance" }
+      }
+    },
+    {
+      "scopeId": "scope_org",
+      "resourceTypeId": "rtype_document",
+      "name": "Legal Documents",
+      "matchDefinition": {
+        "tags": { "department": "legal" }
+      }
+    }
+  ]'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+[
+  {
+    "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Finance Documents",
+    "matchDefinition": {
+      "tags": { "department": "finance" }
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  {
+    "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c",
+    "scopeId": "scope_org",
+    "resourceTypeId": "rtype_document",
+    "name": "Legal Documents",
+    "matchDefinition": {
+      "tags": { "department": "legal" }
+    },
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+]
+```
+</ResponseExample>

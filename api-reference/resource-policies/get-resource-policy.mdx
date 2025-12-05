@@ -1,0 +1,44 @@
+---
+title: 'Get Resource Policy'
+api: 'GET /resource-policies/{id}'
+description: 'Get a resource policy by ID'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource policy ID
+</ParamField>
+
+## Response
+
+Returns the resource policy object.
+
+<RequestExample>
+```bash cURL
+curl -X GET 'https://api.example.com/resource-policies/policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "scopeId": "scope_org",
+  "name": "Finance Team Access",
+  "description": "Allow finance team to read finance documents",
+  "target": {
+    "kind": "collection",
+    "collectionId": "collection_finance_docs"
+  },
+  "actions": ["read", "update"],
+  "effect": "allow",
+  "priority": 50,
+  "subjectCondition": {
+    "==": [{"var": "subject.meta.department"}, "finance"]
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

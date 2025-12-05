@@ -1,0 +1,63 @@
+---
+title: 'Update Resource Collection'
+api: 'PATCH /resource-collections/{id}'
+description: 'Update a resource collection'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource collection ID
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name for the collection
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description of what this collection represents
+</ParamField>
+
+<ParamField body="matchDefinition" type="object">
+  Rules for matching resources (replaces existing definition)
+</ParamField>
+
+## Response
+
+Returns the updated resource collection object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/resource-collections/collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Finance & Accounting Documents",
+    "matchDefinition": {
+      "tags": {
+        "department": ["finance", "accounting"]
+      }
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "collection_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "scopeId": "scope_org",
+  "resourceTypeId": "rtype_document",
+  "name": "Finance & Accounting Documents",
+  "description": "All documents tagged with finance department",
+  "matchDefinition": {
+    "tags": {
+      "department": ["finance", "accounting"]
+    }
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>

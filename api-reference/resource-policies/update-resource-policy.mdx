@@ -1,0 +1,83 @@
+---
+title: 'Update Resource Policy'
+api: 'PATCH /resource-policies/{id}'
+description: 'Update a resource policy'
+---
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The resource policy ID
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string">
+  Display name for the policy
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description of what this policy does
+</ParamField>
+
+<ParamField body="actions" type="array">
+  Actions this policy applies to
+</ParamField>
+
+<ParamField body="effect" type="string">
+  Policy effect: `allow` or `deny`
+</ParamField>
+
+<ParamField body="priority" type="number">
+  Higher priority policies are evaluated first
+</ParamField>
+
+<ParamField body="subjectCondition" type="object">
+  JSON Logic condition to match the actor
+</ParamField>
+
+<ParamField body="contextCondition" type="object">
+  JSON Logic condition to match request context
+</ParamField>
+
+<Note>
+  The `target` cannot be changed after creation. Create a new policy if you need to target a different resource or collection.
+</Note>
+
+## Response
+
+Returns the updated resource policy object.
+
+<RequestExample>
+```bash cURL
+curl -X PATCH 'https://api.example.com/resource-policies/policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "actions": ["read", "update", "delete"],
+    "priority": 75
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "policy_0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b",
+  "scopeId": "scope_org",
+  "name": "Finance Team Access",
+  "description": "Allow finance team to read finance documents",
+  "target": {
+    "kind": "collection",
+    "collectionId": "collection_finance_docs"
+  },
+  "actions": ["read", "update", "delete"],
+  "effect": "allow",
+  "priority": 75,
+  "subjectCondition": {
+    "==": [{"var": "subject.meta.department"}, "finance"]
+  },
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+</ResponseExample>
