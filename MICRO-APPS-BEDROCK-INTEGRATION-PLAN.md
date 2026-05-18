@@ -198,6 +198,14 @@ Test: a request with a valid Kinde JWT but no matching bedrock subject should re
 
 Mirror the RuleFORGE pattern, but the engine call is HTTP instead of in-process.
 
+> ⚠️ **Important semantic** (see [`SIDECAR-READINESS-DELTA.md`](../apps/bedrock/api-management/src/management/SIDECAR-READINESS-DELTA.md) S10): bedrock's `/evaluate` looks up memberships at the EXACT `scopeId` you pass. It does not walk up the scope hierarchy. So `@Authz` cannot just derive `scopeId` from the resource being accessed — it must resolve the actor's *membership scope*. Three patterns:
+>
+> 1. **Cross-app super-admin endpoint** → evaluate at `micro_apps_root` (the platform-tier scope where `micro_apps_admin` lives). Example: the slice 1 admin-portal `POST /api/admin/peptides`.
+> 2. **Per-app admin endpoint** → evaluate at `app_<name>` (where that app's admins have memberships).
+> 3. **Per-tenant endpoint** → evaluate at the tenant scope from the request context (typically the URL or session).
+>
+> The `@Authz` decorator's `scopeId` field is therefore a function of the *endpoint*, not the *resource*. Encode it as either a static value or a resolver from session context, never derive from the resource.
+
 ### 4.1 BedrockAuthGuard
 
 ```typescript
