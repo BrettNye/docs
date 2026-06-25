@@ -83,14 +83,32 @@ curl -X POST 'https://api.example.com/scopes/batch' \
   ]'
 ```
 
-## Authentication
+## Authentication and Authorization
 
-All API endpoints require Bearer token authentication.
+Programmatic clients authenticate with a **Bedrock API key** sent in the `x-api-key` header (the Bedrock console authenticates human users via session):
 
 ```bash
-curl -X GET 'https://api.example.com/subjects/sub_123' \
-  -H 'Authorization: Bearer YOUR_TOKEN'
+curl -X POST 'https://api.example.com/evaluate' \
+  -H 'x-api-key: brk_your_key_here' \
+  -H 'Content-Type: application/json' \
+  -d '{ "actor": { "subjectId": "subject_jane", "subjectType": "user" }, "scopeId": "scope_engineering", "action": "read", "resource": { "resourceId": "resource_roadmap" } }'
 ```
+
+Every API key carries a **`kind`** that determines which API surfaces it may reach:
+
+| `kind` | Reaches | Scope |
+|--------|---------|-------|
+| `user` *(default)* | Management actions as that subject | tenant-scoped |
+| `service` | **Decision path** — `POST /evaluate`, `GET /effective-permissions` (may assert any subject **within its tenant**) | tenant-scoped |
+| `platform` | **Core control-plane** — roles, permissions, scopes, resources, policies, tags, subjects, memberships, overrides | operator (cross-tenant) |
+
+- The **core control-plane endpoints require a `platform` key** — a `user`/`service` key receives `403`.
+- The **decision path requires a `service` (or `platform`) key**, and a `service` key may only evaluate **within its own tenant's scopes** — a request whose `scopeId` belongs to another tenant receives `403`.
+- A negative authorization *decision* from `/evaluate` is still `200` with `{ "allowed": false }`. The `401`/`403` responses are only about whether the caller's **key may use the endpoint at all** — they are distinct from the decision result.
+
+<Warning>
+  **Upgrading existing keys.** API keys created before credential tiers existed default to `kind: user` (least privilege). If you use an existing key for programmatic `/evaluate` calls or core control-plane operations, **re-mint it as a `service` or `platform` key** — otherwise those requests now return `403`.
+</Warning>
 
 ## Base URL
 

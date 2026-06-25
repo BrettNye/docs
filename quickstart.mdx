@@ -19,6 +19,10 @@ This guide walks you through setting up a complete authorization system with Bed
   **Batch Operations**: All examples use batch endpoints to minimize API calls. IDs use a namespaced UUIDv7 format (e.g., `scope_type_org`). You can provide your own IDs for in-batch references.
 </Info>
 
+<Warning>
+  **Credentials.** Steps 1–5 are **core control-plane** operations and require a `platform` API key (sent as `x-api-key: brk_...`). The `/evaluate` calls in Step 6 require a tenant-scoped `service` key. The `Authorization: Bearer YOUR_TOKEN` placeholder below stands in for the appropriate key. See [Authentication and Authorization](/api-reference/introduction#authentication-and-authorization).
+</Warning>
+
 ## Step 1: Set Up Your Hierarchy
 
 Create scope types and their hierarchy relationship in two requests:
@@ -208,7 +212,7 @@ curl -X POST 'https://api.example.com/resource-policies' \
     "effect": "deny",
     "priority": 100,
     "subjectCondition": {
-      "==": [{"var": "subject.type"}, "agent"]
+      "==": [{"var": "subject.subjectType"}, "agent"]
     }
   }'
 ```

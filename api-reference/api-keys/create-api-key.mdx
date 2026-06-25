@@ -30,6 +30,16 @@ description: 'Create a new API key'
   Intended use case (e.g., "ci-cd", "backup", "reporting")
 </ParamField>
 
+<ParamField body="kind" type="string" default="user">
+  Credential tier controlling which API surfaces this key may reach:
+
+  - `user` — acts as a single subject (the **default**); reaches the management surface as that subject.
+  - `service` — a consuming application / sidecar. Required to call the **decision path** (`POST /evaluate`, `GET /effective-permissions`); may assert any subject **within its own tenant** (set `tenantId`).
+  - `platform` — a Bedrock operator credential. Required to reach the **core control-plane** endpoints (roles, permissions, scopes, resources, policies, tags, subjects, memberships, overrides).
+
+  Omitting `kind` defaults to `user`. Choose the least-privileged tier the key needs. (`kind` is the credential's *authorization tier* — distinct from the subject's `subjectType`.)
+</ParamField>
+
 <ParamField body="metadata" type="object">
   Custom metadata
 </ParamField>
@@ -53,7 +63,8 @@ curl -X POST 'https://api.example.com/api-keys' \
     "tenantId": "tenant_acme",
     "environmentId": "environment_prod",
     "expiresAt": "2025-01-15T10:30:00Z",
-    "intendedUse": "ci-cd"
+    "intendedUse": "ci-cd",
+    "kind": "service"
   }'
 ```
 </RequestExample>
@@ -75,7 +86,8 @@ curl -X POST 'https://api.example.com/api-keys' \
   "createdAt": "2024-01-15T10:30:00Z",
   "expiresAt": "2025-01-15T10:30:00Z",
   "status": "active",
-  "intendedUse": "ci-cd"
+  "intendedUse": "ci-cd",
+  "kind": "service"
 }
 ```
 </ResponseExample>
