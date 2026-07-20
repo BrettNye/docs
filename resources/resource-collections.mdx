@@ -21,12 +21,16 @@ Collections are powerful for:
 | `scopeId` | `string` | Scope where collection is defined |
 | `resourceTypeId` | `string` | Type of resources in this collection |
 | `name` | `string` | Display name |
-| `description` | `string?` | What this collection represents |
-| `matchDefinition` | `ResourceMatchDefinition` | Rules for matching resources |
+| `match` | `ResourceMatchDefinition` | Rules for matching resources |
+
+<Warning>
+  **Some match operators don't work yet** (schema/matcher mismatch—see the [roadmap](/roadmap)):
+  `time` matching is **non-functional** today, and the `fields` operators `eq`/`ne`/`nin`/`startsWith`/`endsWith`/`regex` are **silently ignored**. Reliable today: `tags`, `patterns` (matched as **regex**, not glob), `fields` with `in`/`gt`/`gte`/`lt`/`lte`/`contains`/bare-equality, `condition`, and `any`/`all`/`none`. A silently-ignored filter makes a collection match *more* than intended—verify before backing a policy with it.
+</Warning>
 
 ## Match Definition
 
-The `matchDefinition` object defines how resources are matched:
+The `match` object defines how resources are matched:
 
 ```typescript
 interface ResourceMatchDefinition {
@@ -68,7 +72,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Active Documents",
-    "matchDefinition": {
+    "match": {
       "fields": {
         "status": "active"
       }
@@ -85,7 +89,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Finance Documents",
-    "matchDefinition": {
+    "match": {
       "tags": {
         "department": "finance"
       }
@@ -100,7 +104,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Sensitive Documents",
-    "matchDefinition": {
+    "match": {
       "tags": {
         "classification": ["confidential", "restricted", "top-secret"]
       }
@@ -117,7 +121,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_report",
     "name": "Quarterly Reports",
-    "matchDefinition": {
+    "match": {
       "patterns": {
         "name": "Q*-Report-*"
       }
@@ -134,7 +138,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "This Year Documents",
-    "matchDefinition": {
+    "match": {
       "time": {
         "field": "createdAt",
         "after": "2024-01-01T00:00:00Z"
@@ -150,7 +154,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Recently Modified",
-    "matchDefinition": {
+    "match": {
       "time": {
         "field": "updatedAt",
         "after": "-30d"
@@ -168,9 +172,9 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_order",
     "name": "High-Value Orders",
-    "matchDefinition": {
+    "match": {
       "condition": {
-        ">": [{"var": "meta.totalAmount"}, 10000]
+        ">": [{"var": "data.totalAmount"}, 10000]
       }
     }
   }'
@@ -189,7 +193,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Active Finance Docs 2024",
-    "matchDefinition": {
+    "match": {
       "all": [
         {"fields": {"status": "active"}},
         {"tags": {"department": "finance"}},
@@ -210,7 +214,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Finance or Legal Docs",
-    "matchDefinition": {
+    "match": {
       "any": [
         {"tags": {"department": "finance"}},
         {"tags": {"department": "legal"}}
@@ -230,7 +234,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Non-Archived Documents",
-    "matchDefinition": {
+    "match": {
       "none": [
         {"fields": {"status": "archived"}}
       ]
@@ -247,7 +251,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Published Finance/Legal Docs",
-    "matchDefinition": {
+    "match": {
       "all": [
         {"fields": {"status": "active"}},
         {
@@ -276,7 +280,7 @@ curl -X POST 'https://api.example.com/resource-collections' \
     "scopeId": "scope_org",
     "resourceTypeId": "rtype_document",
     "name": "Finance Documents",
-    "matchDefinition": {
+    "match": {
       "tags": {"department": "finance"}
     }
   }'
@@ -323,7 +327,7 @@ When evaluating permissions, the engine:
 
 ```typescript
 // Resource: { type: "document", tags: { department: "finance" }, status: "active" }
-// Collection: { matchDefinition: { tags: { department: "finance" } } }
+// Collection: { match: { tags: { department: "finance" } } }
 // → Resource matches collection
 // → Collection's policies apply
 ```
@@ -343,8 +347,8 @@ When evaluating permissions, the engine:
   <Accordion title="Consider performance">
     Very broad collections (matching many resources) may impact evaluation performance.
   </Accordion>
-  <Accordion title="Document your collections">
-    Use the description field to explain the purpose and criteria.
+  <Accordion title="Name collections clearly">
+    Collections have no description field—put the intent in the `name`.
   </Accordion>
 </AccordionGroup>
 

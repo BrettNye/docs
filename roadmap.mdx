@@ -31,3 +31,19 @@ The `resource` binding in a json-logic condition currently exposes `id`, `extern
 **Planned:** expose additional resource attributes (e.g. `createdBy`, `createdAt`, custom metadata) in the condition context.
 
 **Available today:** resource **tags** (top-level `tags` / `tagList`) for classification, and resource **ownership** (`owns(subject, resource, role)`) for owner-based access.
+
+### Resource-collection match operators
+
+**Status:** partially broken — pending a schema/matcher reconciliation.
+
+The resource-collection `match` schema and the engine's matcher use **different operator vocabularies**, so some rules validate but are silently ignored:
+
+- **`fields`** — only `in`, `gt`, `gte`, `lt`, `lte`, `contains`, and bare equality (`{"field": "value"}`) both validate and work. `eq`, `ne`, `nin`, `startsWith`, `endsWith`, `regex` are silently ignored (the matcher reads `equals`/`notIn`/`exists`).
+- **`time`** — **non-functional today**: the schema accepts `before`/`after`/`between`, but the matcher reads `eq`/`gt`/`gte`/`lt`/`lte`, so no time rule takes effect.
+- **`patterns`** — matched as a **regex** (`new RegExp`), not a glob.
+
+Because a silently-ignored filter makes a collection match *more* than intended (and collections back resource policies), this is worth reconciling.
+
+**Planned:** align the schema and matcher on one operator set so `fields` and `time` rules behave as written.
+
+**Reliable today:** `tags`, `patterns` (as regex), `fields` with `in`/`gt`/`gte`/`lt`/`lte`/`contains`/bare-equality, `condition`, and `any`/`all`/`none`.
