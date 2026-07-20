@@ -8,6 +8,25 @@ icon: 'user-group'
 
 The `onBehalfOf` field in evaluation requests enables **delegated authorization**. When provided, Bedrock evaluates permissions for both the actor (who's performing the action) and the principal (who they're acting for).
 
+## Prerequisite: a Delegation Grant
+
+Delegation is **gated**. Before any permissions are checked, an **active delegation grant** authorizing the actor to act for the principal in the scope must exist—otherwise the request is denied with `NO_DELEGATION_GRANT`. The "both have permission → allowed" logic below applies **only once a grant is in place**.
+
+```bash
+curl -X POST 'https://api.example.com/delegation-grants' \
+  -H 'x-api-key: brk_YOUR_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "scopeId": "scope_engineering",
+    "actorSubjectId": "subject_agent",
+    "principalSubjectId": "subject_jane",
+    "validFrom": "2026-01-01T00:00:00Z",
+    "validUntil": "2026-12-31T23:59:59Z"
+  }'
+```
+
+The temporal window (`validFrom`/`validUntil`) is checked against a **trusted server clock**—a forged `context.now` cannot revive an expired grant.
+
 ## Evaluation Input
 
 ```typescript
@@ -57,9 +76,10 @@ const decision = await bedrock.evaluate({
 });
 
 // Checks:
+// 0. Is there an active delegation grant (agent -> Jane) in scope_engineering?
 // 1. Does the agent have "document:read" in scope_engineering?
 // 2. Does Jane have "document:read" in scope_engineering?
-// 3. Both must pass
+// 3. All must pass (grant + both legs) — the allow is the intersection
 ```
 
 ## Decision Output
@@ -89,7 +109,7 @@ interface BedrockDecision {
     { permission: {...}, sourceRoleIds: ["role_agent_reader"] },
     { permission: {...}, sourceRoleIds: ["role_editor"] }
   ],
-  explanation: "Allowed via delegation: agent has permission, principal has permission",
+  explanation: "Delegated permission read:document granted. Actor and principal both allowed.",
   usedDelegation: true,
   evaluatedActor: { subjectId: "subject_agent", subjectType: "agent" },
   evaluatedOnBehalfOf: { subjectId: "subject_jane", subjectType: "user" }
@@ -139,22 +159,19 @@ Reason: Neither actor nor principal has permission
 
 ## Scope Considerations
 
-Both actor and principal must have permissions in the **same scope** (or inherit from parent scopes):
+Both legs are evaluated at the **same `scopeId`**, each composed per that scope's [`permissionMode`](/concepts/scope-types). Under the default `override` mode, each subject needs a membership at that exact scope; under `inherit`/`additive`, ancestor grants are pulled in.
 
 ```typescript
-// Agent is member of scope_org
-// Jane is member of scope_engineering (child of scope_org)
-
 const decision = await bedrock.evaluate({
   actor: { subjectId: "subject_agent", subjectType: "agent" },
   onBehalfOf: { subjectId: "subject_jane", subjectType: "user" },
-  scopeId: "scope_engineering",  // Evaluating in engineering scope
+  scopeId: "scope_engineering",
   action: "read",
   resource: { resourceType: "document" }
 });
 
-// Agent's permissions from scope_org apply (inherited)
-// Jane's permissions from scope_engineering apply (direct)
+// Both the agent and Jane are resolved at scope_engineering;
+// ancestor grants count only if that scope's type is inherit/additive.
 ```
 
 ## Overrides Apply to Both
@@ -167,7 +184,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_production",
     "permissionId": "perm_write",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -189,12 +206,12 @@ const decision = await bedrock.evaluate({
 Conditions are evaluated for both actor and principal:
 
 ```bash
-# Permission with department condition
+# Role-permission edge with a condition (conditions live on the edge, not the permission)
 {
-  "action": "read",
-  "resourceType": "document",
-  "logic": {
-    "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
+  "roleId": "role_reader",
+  "permissionId": "perm_doc_read",
+  "condition": {
+    "==": [{"var": "subject.meta.department"}, "engineering"]
   }
 }
 ```
