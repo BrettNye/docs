@@ -19,27 +19,31 @@ icon: 'link'
 
 ## Model Types
 
-The `TagAssociationModelTypeEnum` defines what can be bound:
+The `TagAssociationModelTypeEnum` defines what a group can be bound to. Bindings are by **type**, not individual instances:
 
 | Model Type | Description |
 |------------|-------------|
-| `resource` | Resource instances |
-| `resource_type` | Specific resource types |
-| `subject` | Users, agents, services |
-| `role` | Roles |
-| `permission` | Permissions |
+| `resource_type` | A resource type (optionally a specific one via `modelId`) |
+| `subject_type` | A subject type |
+| `scope_type` | A scope type |
+
+<Note>
+  This is distinct from tag **assignment**, whose `targetType` uses `TaggableModelTypeEnum`
+  (`scope` / `resource` / `subject` / `role` / `membership`)—you *assign* a tag to a specific
+  instance, but you *bind* a tag group to a type.
+</Note>
 
 ## Creating Bindings
 
-### Bind to All Resources
+### Bind to a Resource Type
 
-Allow any resource to use tags from this group:
+Allow resources of a type to use tags from this group (omit `modelId` to apply to resource types generally):
 
 ```bash
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_sensitivity",
-    "modelType": "resource"
+    "modelType": "resource_type"
   }'
 ```
 
@@ -56,15 +60,15 @@ curl -X POST 'https://api.example.com/tag-group-bindings' \
   }'
 ```
 
-### Bind to Subjects
+### Bind to a Subject Type
 
-Users can be tagged with departments:
+Subjects can be tagged with departments:
 
 ```bash
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_departments",
-    "modelType": "subject"
+    "modelType": "subject_type"
   }'
 ```
 
@@ -85,14 +89,14 @@ curl -X POST 'https://api.example.com/tag-groups' \
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_departments",
-    "modelType": "subject"
+    "modelType": "subject_type"
   }'
 
 # Bind to resources (documents can have department tags)
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_departments",
-    "modelType": "resource"
+    "modelType": "resource_type"
   }'
 ```
 
@@ -131,7 +135,7 @@ curl -X POST 'https://api.example.com/tag-groups' \
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_skills",
-    "modelType": "subject"
+    "modelType": "subject_type"
   }'
 ```
 
@@ -150,7 +154,7 @@ curl -X POST 'https://api.example.com/tag-groups' \
 curl -X POST 'https://api.example.com/tag-group-bindings' \
   -d '{
     "tagGroupId": "tg_labor",
-    "modelType": "subject"
+    "modelType": "subject_type"
   }'
 
 # Jobs (resources) require specific labor classes
@@ -188,7 +192,7 @@ curl -X POST 'https://api.example.com/tag-assignments' \
 curl -X GET 'https://api.example.com/tag-group-bindings?tagGroupId=tg_departments'
 
 # Get all bindings for a model type
-curl -X GET 'https://api.example.com/tag-group-bindings?modelType=subject'
+curl -X GET 'https://api.example.com/tag-group-bindings?modelType=subject_type'
 ```
 
 ## Use Cases
@@ -201,8 +205,8 @@ Bind departments to both users and documents, then use in permissions:
 # Binding setup
 curl -X POST 'https://api.example.com/tag-group-bindings/batch' \
   -d '[
-    {"tagGroupId": "tg_departments", "modelType": "subject"},
-    {"tagGroupId": "tg_departments", "modelType": "resource"}
+    {"tagGroupId": "tg_departments", "modelType": "subject_type"},
+    {"tagGroupId": "tg_departments", "modelType": "resource_type"}
   ]'
 
 # Tag a user
