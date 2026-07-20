@@ -24,7 +24,7 @@ The `cascade` property controls how permissions propagate through the hierarchy:
 
 ### Inherit
 
-Permissions on the parent automatically apply to the child:
+A permission **patterned to a parent resource** can grant access to that resource's descendants:
 
 ```bash
 curl -X POST 'https://api.example.com/resource-hierarchy' \
@@ -36,10 +36,15 @@ curl -X POST 'https://api.example.com/resource-hierarchy' \
   }'
 ```
 
-With `cascade: "inherit"`:
-- If a user can read the folder, they can read documents inside
-- Permissions flow down the hierarchy automatically
-- Ideal for folder/document, project/task relationships
+With `cascade: "inherit"`, when a **child** resource is evaluated and direct RBAC denies, the engine walks up the `inherit` edges to the child's ancestors. Access is granted if the subject holds a permission whose `resourceType` matches the **child's** type (or `*`) **and** whose `resourcePattern` is an **ancestor's resource id**.
+
+<Warning>
+  This is **not** "folder-read permission implies document-read". The granting permission must be
+  typed to the child (or `*`) and **patterned to the ancestor's id**—e.g. a `document`-typed
+  (or `*`) read permission with `resourcePattern: "resource_folder_123"` grants `read` on
+  documents beneath that folder. A permission typed `folder` does **not** satisfy a `document`
+  evaluation.
+</Warning>
 
 ### None
 
@@ -67,7 +72,7 @@ With `cascade: "none"`:
 curl -X POST 'https://api.example.com/resources' \
   -d '{
     "resourceTypeId": "rtype_folder",
-    "scopeId": "scope_engineering",
+    "ownerScopeId": "scope_engineering",
     "externalResourceId": "folder-123",
     "displayName": "Engineering Docs"
   }'
@@ -76,7 +81,7 @@ curl -X POST 'https://api.example.com/resources' \
 curl -X POST 'https://api.example.com/resources' \
   -d '{
     "resourceTypeId": "rtype_document",
-    "scopeId": "scope_engineering",
+    "ownerScopeId": "scope_engineering",
     "externalResourceId": "doc-456",
     "displayName": "API Design Doc"
   }'
@@ -119,47 +124,53 @@ curl -X POST 'https://api.example.com/resource-type-hierarchy' \
 
 ## Hierarchical Permission Patterns
 
-### Pattern 1: Folder Access Grants Document Access
+### Pattern 1: Grant Access to a Folder's Contents
 
-When a user can access a folder, they can access its contents:
-
-```typescript
-// Check if user can read the folder
-const folderAccess = await bedrock.evaluate({
-  actor: { subjectId: "subject_jane", subjectType: "user" },
-  scopeId: "scope_engineering",
-  action: "read",
-  resource: { resourceId: "resource_folder_123" }
-});
-
-// If folder access granted, documents inside are also accessible
-if (folderAccess.allowed) {
-  // User can read documents in this folder
-}
-```
-
-### Pattern 2: Inherited Permissions
-
-Define permissions that propagate through the hierarchy:
+Grant `read` on everything beneath a folder by patterning a permission to the folder's id (typed to the child, or `*`). The engine applies it automatically when a document inside is evaluated:
 
 ```bash
-# Permission to read folder and all contents
 curl -X POST 'https://api.example.com/permissions' \
   -d '{
     "scopeId": "scope_org",
     "action": "read",
-    "resourceType": "folder",
-    "resourcePattern": "*",
-    "key": "folder:read:*",
-    "label": "Read Folder and Contents",
-    "logic": {
-      "or": [
-        {"==": [{"var": "resource.type"}, "folder"]},
-        {"in": [{"var": "resource.parentId"}, {"var": "subject.accessibleFolders"}]}
-      ]
-    }
+    "resourceType": "document",
+    "resourcePattern": "resource_folder_123",
+    "key": "document:read:resource_folder_123"
   }'
 ```
+
+```typescript
+// Evaluate the DOCUMENT directly — the engine walks the inherit edge up to the folder
+const decision = await bedrock.evaluate({
+  actor: { subjectId: "subject_jane", subjectType: "user" },
+  scopeId: "scope_engineering",
+  action: "read",
+  resource: { resourceId: "resource_doc_456" }  // inside folder_123
+});
+// allowed via the folder-patterned permission
+```
+
+### Pattern 2: Nested Inheritance
+
+Inheritance walks the full ancestor chain, so a permission patterned to a top-level container reaches everything beneath it (as long as the edges are `cascade: "inherit"`):
+
+```bash
+# Read anything under the workspace root
+curl -X POST 'https://api.example.com/permissions' \
+  -d '{
+    "scopeId": "scope_org",
+    "action": "read",
+    "resourceType": "*",
+    "resourcePattern": "resource_workspace_root",
+    "key": "*:read:resource_workspace_root"
+  }'
+```
+
+<Note>
+  Inheritance is driven by the ancestor **resourcePattern**, not a condition. There is no
+  `resource.parentId` or `subject.accessibleFolders` in the condition context—don't model
+  hierarchy access with a `logic` condition.
+</Note>
 
 ## Common Hierarchy Patterns
 
