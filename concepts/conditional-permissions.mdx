@@ -36,7 +36,7 @@ JSON Logic uses a simple JSON structure to express conditions:
 
 | Operator | Description | Example |
 |----------|-------------|---------|
-| `==` | Equals | `{"==": [{"var": "subject.type"}, "admin"]}` |
+| `==` | Equals | `{"==": [{"var": "subject.subjectType"}, "admin"]}` |
 | `!=` | Not equals | `{"!=": [{"var": "resource.status"}, "archived"]}` |
 | `>`, `>=`, `<`, `<=` | Comparisons | `{">=": [{"var": "subject.level"}, 3]}` |
 | `in` | Value in array | `{"in": [{"var": "subject.dept"}, ["finance", "accounting"]]}` |
@@ -51,8 +51,8 @@ Use `var` to access values from the evaluation context:
 
 ```json
 {"var": "subject.meta.department"}
-{"var": "resource.tags.classification"}
-{"var": "context.time.hour"}
+{"var": "tags.classification"}
+{"var": "time.hour"}
 ```
 
 ## Conditional Role-Permissions
@@ -69,20 +69,30 @@ curl -X POST 'https://api.example.com/role-permissions' \
     "condition": {
       "==": [
         {"var": "subject.id"},
-        {"var": "resource.ownerId"}
+        {"var": "tags.ownerId"}
       ]
     }
   }'
 ```
 
+<Note>
+  The resource object does **not** expose an owner subject id. To match a
+  resource's owner against the acting subject, surface the owner id as a
+  resource **tag** (read via `tags.<identifier>`) or pass it in your own
+  `context`. `resource.ownerScopeId` identifies the owning **scope**, not a
+  subject.
+</Note>
+
 ```bash
-# Managers can approve expenses under $10,000
+# Managers can approve expenses under $10,000.
+# `resource.amount` is NOT exposed in the context (see Resource Variables below) —
+# pass the amount in `context` and reference it at the top level.
 curl -X POST 'https://api.example.com/role-permissions' \
   -d '{
     "roleId": "role_manager",
     "permissionId": "perm_expense_approve",
     "condition": {
-      "<": [{"var": "resource.amount"}, 10000]
+      "<": [{"var": "amount"}, 10000]
     }
   }'
 ```
@@ -92,18 +102,18 @@ curl -X POST 'https://api.example.com/role-permissions' \
 Add conditions to scope-level overrides:
 
 ```bash
-# In production, only allow writes during business hours
+# In production, only allow deploys during business hours (a role-permission override)
 curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
   -d '{
     "childScopeId": "scope_production",
     "roleId": "role_developer",
     "permissionId": "perm_deploy",
-    "state": "enabled",
+    "state": "grant",
     "condition": {
       "and": [
-        {">=": [{"var": "context.time.hour"}, 9]},
-        {"<=": [{"var": "context.time.hour"}, 17]},
-        {"in": [{"var": "context.time.dayOfWeek"}, [1, 2, 3, 4, 5]]}
+        {">=": [{"var": "time.hour"}, 9]},
+        {"<=": [{"var": "time.hour"}, 17]},
+        {"in": [{"var": "time.dayOfWeek"}, [1, 2, 3, 4, 5]]}
       ]
     }
   }'
@@ -111,36 +121,73 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
 
 ## Context Variables
 
-The evaluation context provides these variables:
+The evaluation context provides these variables. The engine resolves
+`subject` from the actor, and—when a resource is supplied—`resource`, `tags`,
+and `tagList`. These resolved values **overwrite** any same-named keys you pass
+in `context`.
 
 ### Subject Variables
 
+The full resolved subject is exposed under `subject`:
+
 | Variable | Description |
 |----------|-------------|
-| `subject.id` | Subject ID |
-| `subject.type` | Subject type (user, agent, service) |
-| `subject.externalId` | External system ID |
-| `subject.meta.*` | Custom metadata fields |
+| `subject.id` | Bedrock subject ID |
+| `subject.subjectType` | Subject type (e.g. user, agent, service) |
+| `subject.externalId` | Your system's identifier for the subject |
+| `subject.displayName` | Human-readable name (if set) |
+| `subject.meta.*` | Custom metadata fields on the subject |
 
 ### Resource Variables
 
-| Variable | Description |
-|----------|-------------|
-| `resource.id` | Resource ID |
-| `resource.type` | Resource type |
-| `resource.ownerId` | Owner subject ID |
-| `resource.ownerScopeId` | Owner scope ID |
-| `resource.meta.*` | Custom metadata fields |
-| `resource.tags.*` | Tag assignments |
-
-### Context Variables
+Available only when the evaluation includes a resource. These are the **only**
+resource fields exposed:
 
 | Variable | Description |
 |----------|-------------|
-| `context.time.hour` | Current hour (0-23) |
-| `context.time.dayOfWeek` | Day of week (0=Sun, 6=Sat) |
-| `context.ip` | Request IP address |
-| `context.*` | Any custom context you provide |
+| `resource.id` | Bedrock resource ID |
+| `resource.externalResourceId` | Your system's identifier for the resource |
+| `resource.resourceType` | Resource type key (e.g. `"document"`) |
+| `resource.resourceTypeId` | Resource type ID |
+| `resource.ownerScopeId` | ID of the **scope** that owns the resource |
+| `resource.displayName` | Human-readable name (if set) |
+
+<Note>
+  There is no `resource.meta` or `resource.ownerId`, and arbitrary resource
+  columns are **not** auto-exposed. To use custom resource attributes (owner
+  subject, amount, status, classification, etc.) in a condition, surface them
+  as **tags** (`tags.*` / `tagList`) or pass them yourself in `context`.
+</Note>
+
+### Tag Variables
+
+Loaded when a resource is resolved and `includeResourceTags` is `true` (the
+default):
+
+| Variable | Description |
+|----------|-------------|
+| `tags.<identifier>` | The **label** of the tag with that identifier (a string) |
+| `tagList` | Array of `{ id, identifier, label, groupId }`—use for `in`/membership checks |
+
+### Time (trusted clock)
+
+The engine injects the current time from a **trusted server clock** at the top level. Any `time`, `now`, or `nowMs` you pass in `context` is **ignored**, so a caller cannot forge the time to slip past a time-based condition:
+
+| Variable | Description |
+|----------|-------------|
+| `time.hour` | Current hour, 0–23 (UTC) |
+| `time.minute` | Current minute, 0–59 (UTC) |
+| `time.dayOfWeek` | Day of week, 0=Sun … 6=Sat (UTC) |
+| `now` / `nowMs` | Current time as ISO string / epoch millis |
+
+### Your Context
+
+Any other keys you pass in `context` are spread at the **top level** (not under a `context.` prefix). The resolved `subject`, `resource`, `tags`, and `tagList` overwrite same-named keys:
+
+| Variable | Description |
+|----------|-------------|
+| `ip` | e.g. a request IP you supply as `context: { ip }`, referenced as `{"var": "ip"}` |
+| `<your keys>` | Any custom context you provide, referenced by its own top-level name |
 
 ## Common Patterns
 
@@ -150,7 +197,7 @@ The evaluation context provides these variables:
 {
   "in": [
     {"var": "subject.meta.department"},
-    {"var": "resource.tags.allowedDepartments"}
+    {"var": "tags.allowedDepartments"}
   ]
 }
 ```
@@ -161,7 +208,7 @@ The evaluation context provides these variables:
 {
   ">=": [
     {"var": "subject.meta.clearanceLevel"},
-    {"var": "resource.meta.requiredClearance"}
+    {"var": "tags.requiredClearance"}
   ]
 }
 ```
@@ -172,7 +219,7 @@ The evaluation context provides these variables:
 {
   "==": [
     {"var": "subject.id"},
-    {"var": "resource.ownerId"}
+    {"var": "tags.ownerId"}
   ]
 }
 ```
@@ -182,9 +229,9 @@ The evaluation context provides these variables:
 ```json
 {
   "and": [
-    {">=": [{"var": "context.time.hour"}, 9]},
-    {"<=": [{"var": "context.time.hour"}, 17]},
-    {"!": {"in": [{"var": "context.time.dayOfWeek"}, [0, 6]]}}
+    {">=": [{"var": "time.hour"}, 9]},
+    {"<=": [{"var": "time.hour"}, 17]},
+    {"!": {"in": [{"var": "time.dayOfWeek"}, [0, 6]]}}
   ]
 }
 ```
@@ -194,8 +241,8 @@ The evaluation context provides these variables:
 ```json
 {
   "in": [
-    {"var": "context.ip"},
-    ["192.168.1.0/24", "10.0.0.0/8"]
+    {"var": "ip"},
+    ["192.168.1.10", "10.0.0.5"]
   ]
 }
 ```
@@ -205,7 +252,7 @@ The evaluation context provides these variables:
 ```json
 {
   "or": [
-    {"==": [{"var": "subject.type"}, "admin"]},
+    {"==": [{"var": "subject.subjectType"}, "admin"]},
     {
       "and": [
         {"==": [{"var": "subject.meta.department"}, "finance"]},
@@ -226,13 +273,13 @@ When a permission has a condition:
 4. **Condition errors** → Permission does not apply (fail-closed)
 
 ```typescript
-// Evaluation with context
+// Evaluation with context. `time` comes from the trusted server clock — anything
+// you pass as time/now/nowMs is ignored, so pass only your own data (e.g. ip).
 const decision = await bedrock.evaluate({
   actor: { subjectId: "subject_jane" },
   scopeId: "scope_production",
   action: "deploy",
   context: {
-    time: { hour: 14, dayOfWeek: 3 },
     ip: "192.168.1.100"
   }
 });
