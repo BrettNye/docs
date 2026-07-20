@@ -20,7 +20,7 @@ This guide walks you through setting up a complete authorization system with Bed
 </Info>
 
 <Warning>
-  **Credentials.** Steps 1–5 are **core control-plane** operations and require a `platform` API key (sent as `x-api-key: brk_...`). The `/evaluate` calls in Step 6 require a tenant-scoped `service` key. The `Authorization: Bearer YOUR_TOKEN` placeholder below stands in for the appropriate key. See [Authentication and Authorization](/api-reference/introduction#authentication-and-authorization).
+  **Credentials.** Steps 1–5 are **core control-plane** operations and require a `platform` API key; the `/evaluate` calls in Step 6 require a tenant-scoped `service` key. Both are sent in the **`x-api-key: brk_...`** header (the `brk_YOUR_KEY` placeholder below). Note: `Authorization: Bearer` is the **Kinde user-JWT** path, *not* the API-key path—an API key in a Bearer header returns 401. See [Authentication and Authorization](/api-reference/introduction#authentication-and-authorization).
 </Warning>
 
 ## Step 1: Set Up Your Hierarchy
@@ -30,16 +30,16 @@ Create scope types and their hierarchy relationship in two requests:
 ```bash
 # Create all scope types at once
 curl -X POST 'https://api.example.com/scope-types/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"id": "scope_type_org", "name": "Organization", "config": {"permissionMode": "define"}},
+    {"id": "scope_type_org", "name": "Organization", "config": {"permissionMode": "override"}},
     {"id": "scope_type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
   ]'
 
 # Define hierarchy: Teams can be children of Organizations
 curl -X POST 'https://api.example.com/scope-type-hierarchy' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{"parentTypeId": "scope_type_org", "childTypeId": "scope_type_team"}'
 ```
@@ -51,7 +51,7 @@ Create scopes and link them in the hierarchy:
 ```bash
 # Create organization and team scopes
 curl -X POST 'https://api.example.com/scopes/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"id": "scope_acme", "typeId": "scope_type_org", "name": "Acme Corp", "externalId": "acme-corp"},
@@ -60,7 +60,7 @@ curl -X POST 'https://api.example.com/scopes/batch' \
 
 # Link team to organization
 curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[{"parentScopeId": "scope_acme", "childScopeId": "scope_engineering"}]'
 ```
@@ -72,7 +72,7 @@ Create permissions and roles, then assign permissions to roles:
 ```bash
 # Create permissions
 curl -X POST 'https://api.example.com/permissions/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"id": "permission_read", "scopeId": "scope_acme", "action": "read", "resourceType": "document", "resourcePattern": "*", "key": "document:read:*", "label": "Read Documents"},
@@ -82,7 +82,7 @@ curl -X POST 'https://api.example.com/permissions/batch' \
 
 # Create roles
 curl -X POST 'https://api.example.com/roles/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"id": "role_viewer", "name": "Viewer", "description": "Read-only access", "scopeId": "scope_acme"},
@@ -91,7 +91,7 @@ curl -X POST 'https://api.example.com/roles/batch' \
 
 # Assign permissions to roles
 curl -X POST 'https://api.example.com/role-permissions/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"roleId": "role_viewer", "permissionId": "permission_read"},
@@ -107,7 +107,7 @@ Create subjects (user and AI agent), memberships, and role assignments:
 ```bash
 # Create subjects: a user and an AI agent
 curl -X POST 'https://api.example.com/subjects/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {
@@ -128,7 +128,7 @@ curl -X POST 'https://api.example.com/subjects/batch' \
 
 # Add both to engineering team
 curl -X POST 'https://api.example.com/memberships/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"id": "membership_jane_eng", "subjectId": "subject_jane", "scopeId": "scope_engineering"},
@@ -137,7 +137,7 @@ curl -X POST 'https://api.example.com/memberships/batch' \
 
 # Assign roles: Editor for Jane, Viewer for the agent
 curl -X POST 'https://api.example.com/role-assignments/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"roleId": "role_editor", "membershipId": "membership_jane_eng"},
@@ -156,49 +156,49 @@ Create resources, a collection, and a policy for fine-grained control:
 ```bash
 # Create a resource type and some resources
 curl -X POST 'https://api.example.com/resource-types/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
     {"id": "rtype_document", "name": "Document", "scopeId": "scope_acme"}
   ]'
 
 curl -X POST 'https://api.example.com/resources/batch' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"id": "resource_roadmap", "resourceTypeId": "rtype_document", "scopeId": "scope_engineering", "externalResourceId": "roadmap-2024", "displayName": "2024 Roadmap"},
-    {"id": "resource_budget", "resourceTypeId": "rtype_document", "scopeId": "scope_engineering", "externalResourceId": "budget-confidential", "displayName": "Budget (Confidential)"}
+    {"id": "resource_roadmap", "resourceTypeId": "rtype_document", "ownerScopeId": "scope_engineering", "externalResourceId": "roadmap-2024", "displayName": "2024 Roadmap"},
+    {"id": "resource_budget", "resourceTypeId": "rtype_document", "ownerScopeId": "scope_engineering", "externalResourceId": "budget-confidential", "displayName": "Budget (Confidential)"}
   ]'
 
-# Create a tag for confidential documents
-curl -X POST 'https://api.example.com/tags' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+# Create a tag group with a "confidential" tag (tags live in a group; use identifier/label)
+curl -X POST 'https://api.example.com/tag-groups' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
-  -d '{"id": "tag_confidential", "key": "classification", "value": "confidential", "scopeId": "scope_acme"}'
+  -d '{"id": "tg_classification", "scopeId": "scope_acme", "name": "Classification", "key": "classification", "tags": [{"id": "tag_confidential", "identifier": "confidential", "label": "Confidential"}]}'
 
-# Tag the budget document
+# Tag the budget document (assignment uses targetType/targetId)
 curl -X POST 'https://api.example.com/tag-assignments' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
-  -d '{"tagId": "tag_confidential", "modelType": "resource", "modelId": "resource_budget"}'
+  -d '{"tagId": "tag_confidential", "targetType": "resource", "targetId": "resource_budget"}'
 
 # Create a collection for confidential documents
 curl -X POST 'https://api.example.com/resource-collections' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
     "id": "collection_confidential",
     "scopeId": "scope_acme",
     "resourceTypeId": "rtype_document",
     "name": "Confidential Documents",
-    "matchDefinition": {
-      "tags": {"classification": "confidential"}
+    "match": {
+      "tags": {"confidential": "Confidential"}
     }
   }'
 
 # Create a policy: deny agents access to confidential documents
 curl -X POST 'https://api.example.com/resource-policies' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
     "id": "policy_no_agent_confidential",
@@ -224,7 +224,7 @@ Test your authorization setup:
 ```bash
 # Jane can read the roadmap
 curl -X POST 'https://api.example.com/evaluate' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
     "actor": {"subjectId": "subject_jane", "subjectType": "user"},

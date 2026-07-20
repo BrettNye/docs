@@ -14,16 +14,21 @@ Policies are evaluated **before** role-based permissions, giving you a powerful 
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `id` | `string` | Unique identifier |
+| `id` | `string?` | Unique identifier |
 | `scopeId` | `string` | Scope where policy is defined |
-| `name` | `string` | Display name |
-| `description` | `string?` | What this policy does |
 | `target` | `PolicyTarget` | Resource or collection to target |
-| `actions` | `string[]` | Actions this policy applies to |
-| `effect` | `PolicyEffectEnum` | `allow` or `deny` |
-| `priority` | `number` | Higher priority = evaluated first (default: 0) |
+| `actions` | `string[]` | Actions this applies to (`["*"]` for all) |
+| `effect` | `'allow' \| 'deny'` | Policy effect |
+| `priority` | `number` | Selects the winning group; deny beats allow within a group (default `0`) |
 | `subjectCondition` | `Record<string, unknown>?` | JSON Logic to match the actor |
 | `contextCondition` | `Record<string, unknown>?` | JSON Logic to match request context |
+| `validFrom` / `validUntil` | `string?` | ISO datetime — the policy is inactive outside this window |
+
+<Note>
+  A resource policy has **no** `name` or `description` field. If you send them they are
+  silently dropped (don't rely on them). Express intent with `priority`, `target`, and
+  conditions.
+</Note>
 
 ## Policy Targets
 
@@ -106,8 +111,8 @@ curl -X POST 'https://api.example.com/resource-policies' \
     "effect": "allow",
     "contextCondition": {
       "and": [
-        {">=": [{"var": "context.time.hour"}, 9]},
-        {"<=": [{"var": "context.time.hour"}, 17]}
+        {">=": [{"var": "time.hour"}, 9]},
+        {"<=": [{"var": "time.hour"}, 17]}
       ]
     }
   }'
@@ -139,18 +144,21 @@ Blocks access if the policy matches. Deny policies typically have higher priorit
   "priority": 100,
   "actions": ["delete"],
   "subjectCondition": {
-    "!=": [{"var": "subject.type"}, "admin"]
+    "!=": [{"var": "subject.meta.role"}, "admin"]
   }
 }
 ```
 
 ## Priority and Evaluation Order
 
-Policies are evaluated in priority order (highest first):
+Policies resolve by **priority group**, not first-match:
 
-1. **Higher priority policies** are checked first
-2. **First matching policy** determines the outcome
-3. If no policy matches, **role-based permissions** are checked
+1. All matching policies (action matches, temporal window active, subject/context conditions pass) are collected.
+2. Only the **highest-priority group** among the matches decides.
+3. Within that group, **`deny` beats `allow`** (deny-overrides)—it is **not** "first match wins".
+4. If no policy matches, **role-based permissions** are checked.
+
+A lower-priority `deny` does **not** override a higher-priority `allow`: priority selects the group, and `deny` wins only *within* the winning group.
 
 ```bash
 # High priority deny (evaluated first)
@@ -159,7 +167,7 @@ Policies are evaluated in priority order (highest first):
   "effect": "deny",
   "priority": 100,
   "contextCondition": {
-    "!": {"in": [{"var": "context.ip"}, ["10.0.0.0/8", "192.168.0.0/16"]]}
+    "!": {"in": [{"var": "ip"}, ["10.0.0.0/8", "192.168.0.0/16"]]}
   }
 }
 
@@ -182,7 +190,7 @@ Match based on the actor making the request:
 # Only admins
 {
   "subjectCondition": {
-    "==": [{"var": "subject.type"}, "admin"]
+    "==": [{"var": "subject.meta.role"}, "admin"]
   }
 }
 
@@ -220,8 +228,8 @@ Match based on request context:
 {
   "contextCondition": {
     "and": [
-      {">=": [{"var": "context.time.hour"}, 9]},
-      {"<=": [{"var": "context.time.hour"}, 17]}
+      {">=": [{"var": "time.hour"}, 9]},
+      {"<=": [{"var": "time.hour"}, 17]}
     ]
   }
 }
@@ -229,14 +237,14 @@ Match based on request context:
 # Approved IP ranges
 {
   "contextCondition": {
-    "in": [{"var": "context.ip"}, ["10.0.0.0/8", "192.168.1.0/24"]]
+    "in": [{"var": "ip"}, ["10.0.0.0/8", "192.168.1.0/24"]]
   }
 }
 
 # Specific device types
 {
   "contextCondition": {
-    "in": [{"var": "context.deviceType"}, ["desktop", "laptop"]]
+    "in": [{"var": "deviceType"}, ["desktop", "laptop"]]
   }
 }
 ```
@@ -262,9 +270,9 @@ curl -X POST 'https://api.example.com/resource-policies' \
     },
     "contextCondition": {
       "and": [
-        {">=": [{"var": "context.time.hour"}, 9]},
-        {"<=": [{"var": "context.time.hour"}, 17]},
-        {"in": [{"var": "context.ip"}, ["10.0.0.0/8"]]}
+        {">=": [{"var": "time.hour"}, 9]},
+        {"<=": [{"var": "time.hour"}, 17]},
+        {"in": [{"var": "ip"}, ["10.0.0.0/8"]]}
       ]
     }
   }'
@@ -275,17 +283,14 @@ curl -X POST 'https://api.example.com/resource-policies' \
 When `BedrockEngine.evaluate()` is called:
 
 ```
-1. Get resource being accessed
+1. Get the resource being accessed
 2. Find policies targeting this resource directly
-3. Find collections matching this resource
-4. Get policies targeting those collections
-5. Combine all policies, sort by priority (descending)
-6. For each policy:
-   a. Check if action matches
-   b. Evaluate subjectCondition (if present)
-   c. Evaluate contextCondition (if present)
-   d. If all match → return policy's effect
-7. If no policy matches → continue to role-based evaluation
+3. Find collections matching this resource, and policies targeting those collections
+4. Keep only policies that MATCH: action matches, the validFrom/validUntil window is
+   active, and subjectCondition + contextCondition (if present) pass
+5. Among the matches, take the highest `priority` value
+6. In that highest-priority group: if ANY policy is `deny` → deny; otherwise → allow
+7. If no policy matched → continue to role-based evaluation
 ```
 
 ## Decision Output
@@ -311,16 +316,7 @@ decision.evaluatedPolicy  // { id: "policy_123", name: "Finance Access", ... }
 
 ### Owner-Only Access
 
-```bash
-{
-  "name": "Owner Only",
-  "effect": "allow",
-  "actions": ["*"],
-  "subjectCondition": {
-    "==": [{"var": "subject.id"}, {"var": "resource.ownerId"}]
-  }
-}
-```
+`resource.ownerId` is **not** exposed in the condition context (see the [roadmap](/roadmap)), so a policy condition can't compare it to the actor. For owner-based access today, use a resource-**ownership** grant (`owns(subject, resource, role)`) instead of a policy, or surface the owner's subject id as a resource **tag** and match `tags.<identifier>`.
 
 ### Deny All Except Admins
 
@@ -331,7 +327,7 @@ decision.evaluatedPolicy  // { id: "policy_123", name: "Finance Access", ... }
   "priority": 1000,
   "actions": ["*"],
   "subjectCondition": {
-    "==": [{"var": "subject.type"}, "admin"]
+    "==": [{"var": "subject.meta.role"}, "admin"]
   }
 }
 
@@ -352,8 +348,8 @@ decision.evaluatedPolicy  // { id: "policy_123", name: "Finance Access", ... }
   "actions": ["write", "delete"],
   "contextCondition": {
     "and": [
-      {">=": [{"var": "context.time.hour"}, 2]},
-      {"<=": [{"var": "context.time.hour"}, 4]}
+      {">=": [{"var": "time.hour"}, 2]},
+      {"<=": [{"var": "time.hour"}, 4]}
     ]
   }
 }
@@ -367,7 +363,7 @@ decision.evaluatedPolicy  // { id: "policy_123", name: "Finance Access", ... }
   "effect": "deny",
   "actions": ["*"],
   "contextCondition": {
-    "!": {"==": [{"var": "context.country"}, "US"]}
+    "!": {"==": [{"var": "country"}, "US"]}
   }
 }
 ```

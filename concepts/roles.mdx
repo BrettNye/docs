@@ -19,7 +19,7 @@ A **role** is a named collection of permissions. Instead of assigning individual
 
 ## Creating Roles
 
-Roles are defined at a specific scope and can be used in that scope and all its descendants:
+Roles are defined at a specific scope and can be assigned to memberships in that scope and any of its descendants (assignment is explicit—it does not propagate access automatically):
 
 ```bash
 # Create an Editor role at the organization level
@@ -66,21 +66,30 @@ curl -X POST 'https://api.example.com/role-assignments' \
   -d '{"roleId": "role_editor", "membershipId": "membership_jane"}'
 ```
 
-## Role Inheritance
+## Reusing Roles Across Scopes
 
-Roles defined at a parent scope are available in all child scopes:
+A role definition created at a parent scope can be **assigned** at any child scope—you don't have to redefine it per scope:
 
 ```
 Organization (defines: Admin, Editor, Viewer)
     │
-    ├── Team A ─── can use Admin, Editor, Viewer
+    ├── Team A ─── can assign Admin, Editor, Viewer
     │   │
-    │   └── Project X ─── can use Admin, Editor, Viewer
+    │   └── Project X ─── can assign Admin, Editor, Viewer
     │
-    └── Team B ─── can use Admin, Editor, Viewer
+    └── Team B ─── can assign Admin, Editor, Viewer
 ```
 
-A subject with "Editor" at the Organization level has Editor permissions everywhere in that organization.
+<Warning>
+  This is about role **availability for assignment**, not automatic grants. Under
+  the default **`override`** mode, a subject with an "Editor" membership at the
+  Organization scope does **not** automatically have Editor permissions in Team A
+  or Project X—memberships are evaluated at the exact scope of the request, so you
+  create a membership (and role assignment) at each scope where access is needed.
+  Scope types configured as **`inherit`** or **`additive`** do compose grants from
+  ancestors. See [Scope Types](/concepts/scope-types), [Scopes](/concepts/scopes),
+  and [Evaluation](/concepts/evaluation).
+</Warning>
 
 ## Scope-Specific Roles
 
@@ -140,16 +149,16 @@ curl -X POST 'https://api.example.com/roles/batch' \
 You can disable a role at a child scope using **role overrides**:
 
 ```bash
-# Disable Admin role in production
+# Deactivate the Admin role in production
 curl -X POST 'https://api.example.com/scope-overrides/roles' \
   -d '{
     "childScopeId": "scope_production",
     "roleId": "role_admin",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
-Now subjects with the Admin role won't have admin access in production, even if they have it at the organization level.
+Now the Admin role grants nothing in Production—any subject who holds it there loses its permissions at that scope. (Valid role-override states are `active`, `inactive`, and `inherit`.)
 
 <Card title="Learn about Overrides" icon="sliders" href="/guides/scope-overrides">
   See all override types and patterns

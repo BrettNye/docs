@@ -123,10 +123,11 @@ The `TaggableModelTypeEnum` defines what can be tagged:
 
 | Model Type | Description |
 |------------|-------------|
+| `scope` | Scopes |
 | `resource` | Resource instances |
 | `subject` | Users, agents, services |
 | `role` | Roles |
-| `permission` | Permissions |
+| `membership` | Memberships |
 
 ## Common Tag Group Patterns
 
@@ -204,10 +205,17 @@ curl -X POST 'https://api.example.com/tag-groups' \
 
 ## Using Tags in Permissions
 
-Tags enable attribute-based access control:
+Tags enable attribute-based access control.
+
+<Note>
+  The example below shows *subject-tag* matching, which is **not enforced yet**—the engine
+  doesn't load subject tags (see the [roadmap](/roadmap) and [Tag-Based Access](/tags/tag-based-access)).
+  Resource-side tag conditions **do** work today. Conditions also attach to the role-permission
+  edge (`condition`), not a permission `logic` field.
+</Note>
 
 ```bash
-# Permission: Users can only read documents tagged with their department
+# (Intended model) Users can only read documents tagged with their department
 curl -X POST 'https://api.example.com/permissions' \
   -d '{
     "scopeId": "scope_project",

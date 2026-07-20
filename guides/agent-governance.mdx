@@ -43,13 +43,13 @@ Let's set up a coding assistant with appropriate permissions for a development t
 
 ```bash
 curl -X POST 'https://api.example.com/subjects' \
-  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -H 'x-api-key: brk_YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{
-    "type": "agent",
+    "subjectType": "agent",
     "externalId": "coding-assistant-v1",
-    "metadata": {
-      "name": "Coding Assistant",
+    "displayName": "Coding Assistant",
+    "meta": {
       "model": "claude-3-sonnet",
       "version": "1.0.0",
       "capabilities": ["code-review", "code-generation", "documentation"]
@@ -156,7 +156,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_production",
     "permissionId": "perm_execute_code",
-    "state": "disabled"
+    "state": "inactive"
   }'
 
 # Disable data write for agents in customer data scope
@@ -164,7 +164,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_customer_data",
     "permissionId": "perm_write_data",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -179,7 +179,7 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_compliance",
     "roleId": "role_code_writer",
     "permissionId": "perm_write_code",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
 
@@ -235,7 +235,7 @@ Your MCP server can then check Bedrock permissions before executing tools.
 Use the `BedrockEngine` to evaluate permissions at runtime:
 
 ```typescript
-import { BedrockEngine } from '@bedrock/core';
+import { BedrockEngine } from '@quarry-systems/bedrock-core';
 
 const engine = new BedrockEngine(store);
 
@@ -260,7 +260,7 @@ if (decision.allowed) {
 
 ### Delegated Permissions (Agent Acting on Behalf of User)
 
-When an agent acts on behalf of a user, both must have permission:
+When an agent acts on behalf of a user, an active [delegation grant](/delegation/on-behalf-of#prerequisite-a-delegation-grant) must exist **and** both must have the permission (the allow is the intersection):
 
 ```typescript
 const decision = await engine.evaluate({
@@ -287,6 +287,37 @@ const permissions = await engine.listEffectivePermissions(
 // Returns array of EffectivePermissionSummary
 // [{ resourceType: 'code', action: 'read', permissions: [...], sourceRoles: [...] }]
 ```
+
+## Agents as Resources: Identity & Ownership
+
+Beyond RBAC and delegation, Bedrock models two first-class agent-governance edges. An agent is a `subject`; the thing it represents (its runtime, workspace, artifact) is a `resource`.
+
+**Subject–Resource Identity** — a 1:1 link between a subject and the resource that represents it (create-only). It is for integrity and introspection and is **not** read on the evaluation path.
+
+```bash
+curl -X POST 'https://api.example.com/subject-resource-identities' \
+  -H 'x-api-key: brk_YOUR_KEY' \
+  -d '{"subjectId": "sub_coding_assistant", "resourceId": "resource_agent_runtime"}'
+```
+
+**Resource Ownership** — `owns(subject, resource, role)`. An active ownership row grants the owner-role's matching permissions **on that specific resource**, evaluated as its own engine leg (routed through overrides, conditions fail-closed, temporal window via the trusted clock). Use it to give an agent authority over the resources it owns without a broad scope role.
+
+```bash
+curl -X POST 'https://api.example.com/resource-ownerships' \
+  -H 'x-api-key: brk_YOUR_KEY' \
+  -d '{
+    "subjectId": "sub_coding_assistant",
+    "resourceId": "resource_agent_runtime",
+    "roleId": "role_owner",
+    "validFrom": "2026-01-01T00:00:00Z",
+    "validUntil": "2026-12-31T23:59:59Z"
+  }'
+```
+
+<Note>
+  A resource-policy `deny` still overrides an ownership grant (policies evaluate before the
+  ownership leg). Ownership adds authority; it does not bypass an explicit deny.
+</Note>
 
 ## Best Practices
 

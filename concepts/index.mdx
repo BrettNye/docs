@@ -41,26 +41,22 @@ At its core, Bedrock answers one question:
 
 > **Can this subject perform this action on this resource in this scope?**
 
-To answer this, Bedrock evaluates in order:
+To answer this, the engine works through several legs—roughly in this order:
 
-1. **Resource Policies** — Are there explicit allow/deny policies on this resource?
-2. **Resource Hierarchy** — Does a parent resource grant access (with cascade)?
-3. **Role-Based Permissions** — Does the subject's role grant the action?
-4. **Conditions** — Do JSON Logic conditions on permissions/policies pass?
+1. **Reachability gate** *(when resource-scope gating is enabled)* — Is the resource reachable in this scope at all? If not, the request is denied outright.
+2. **Delegation** *(when acting on behalf of another subject)* — An active [delegation grant](/delegation) must exist, and the agent and the principal must **each** independently pass. A delegated allow is the *intersection* of the two.
+3. **Resource Policies** — Explicit allow/deny policies attached to the resource. Evaluated **before** RBAC; a policy `deny` wins.
+4. **Role-Based Permissions (RBAC)** — Does a role the subject holds grant the action? Roles are composed across the scope chain per the scope's [`permissionMode`](/concepts/scope-types), and any [conditions](/concepts/conditional-permissions) must pass.
+5. **Ownership** — Does the subject own the resource with a role that grants the action?
+6. **Resource Hierarchy** — Only if still denied and the resource has ancestors: does a parent resource grant access (via a `cascade` link)?
 
 ```
-                    ┌─────────────────────┐
-                    │  Resource Policies  │ ◀── Highest priority
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │ Resource Hierarchy  │ ◀── Inherit from parents
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-Subject ──membership──▶ Scope ──▶ Role ──▶ Permission
-                    └─────────────────────┘
+reachability? → delegation (if on-behalf-of) → resource policies → RBAC → ownership → resource-hierarchy fallback → decision
 ```
+
+<Note>
+These are not all strict priority tiers—several are conditional legs (delegation runs only for on-behalf-of requests; the hierarchy fallback runs only when direct RBAC denies **and** a concrete resource is present). See [Evaluation](/concepts/evaluation) for the exact flow.
+</Note>
 
 ## Key Relationships
 
@@ -74,21 +70,25 @@ Subject ──membership──▶ Scope ──▶ Role ──▶ Permission
 
 ## Permission Inheritance
 
-Permissions flow down the scope hierarchy:
+Whether permissions flow down the scope hierarchy depends on each scope's [`permissionMode`](/concepts/scope-types):
+
+- **`override` (the default)** — grants apply **only at the scope where the subject is a member**. A role at the Organization scope does **not** reach child scopes.
+- **`inherit`** — a child scope with no grants of its own falls back to the nearest ancestor that has grants.
+- **`additive`** — a child scope's grants are the union of its own and all ancestor grants.
 
 ```
-Organization (defines: Admin, Editor, Viewer roles)
+Organization  (Editor assigned here)
     │
-    ├── Team A (inherits roles, can override)
+    ├── Team A     ← Editor reaches here only if Team A's type is `inherit` or `additive`
     │       │
-    │       └── Project X (inherits from Team A)
+    │       └── Project X
     │
-    └── Team B (inherits roles, can override)
-            │
-            └── Project Y (inherits from Team B)
+    └── Team B
 ```
 
-A subject with the "Editor" role at the Organization level has Editor permissions in all child scopes—unless an **override** modifies that behavior.
+<Warning>
+Do not assume a role assigned at a parent scope automatically applies to child scopes. Under the default `override` mode it does **not**—downward inheritance requires the child scope's type to use `inherit` or `additive`. Scope [overrides](/concepts/overrides) can then further disable or adjust inherited grants.
+</Warning>
 
 ## Overrides
 
@@ -96,9 +96,9 @@ Bedrock supports three types of overrides to fine-tune inherited permissions:
 
 | Override Type | What it Controls |
 |---------------|------------------|
-| **Role Override** | Enable/disable an entire role at a child scope |
-| **Permission Override** | Enable/disable a specific permission at a child scope |
-| **Role-Permission Override** | Enable/disable a specific permission for a specific role |
+| **Role Override** | Activate or deactivate an entire role at a specific scope |
+| **Permission Override** | Activate or deactivate a specific permission at a specific scope |
+| **Role-Permission Override** | Grant or revoke a specific permission for a specific role at a scope |
 
 <Card title="Learn about Scope Overrides" icon="sliders" href="/guides/scope-overrides">
   See how to use overrides for fine-grained control

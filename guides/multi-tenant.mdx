@@ -200,7 +200,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_env_production",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "inactive"
   }'
 
 # Only Admins can export in production
@@ -209,7 +209,7 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_env_production",
     "roleId": "role_sales_rep",
     "permissionId": "perm_export",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
 

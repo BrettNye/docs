@@ -45,9 +45,10 @@ Bedrock's delegation model addresses all of these.
 ┌─────────────────────────────────────────────────────────┐
 │                   Evaluation Logic                       │
 ├─────────────────────────────────────────────────────────┤
+│  0. Active delegation grant (actor → principal)?         │
 │  1. Does the ACTOR have the permission?                  │
 │  2. Does the PRINCIPAL have the permission?              │
-│  3. Both must pass for delegation to succeed             │
+│  3. All must pass — the allow is the intersection        │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
@@ -61,10 +62,16 @@ Bedrock's delegation model addresses all of these.
 └─────────────────────────────────────────────────────────┘
 ```
 
+<Note>
+  Delegation is **gated**: an active [delegation grant](/delegation/on-behalf-of#prerequisite-a-delegation-grant)
+  authorizing the actor to act for the principal in the scope must exist first, or the request is denied with
+  `NO_DELEGATION_GRANT` before any permission is checked.
+</Note>
+
 ## Basic Example
 
 ```typescript
-// Agent acting on behalf of a user
+// Agent acting on behalf of a user (requires an active delegation grant)
 const decision = await bedrock.evaluate({
   actor: { 
     subjectId: "subject_coding_agent", 
@@ -113,7 +120,7 @@ When `onBehalfOf` is provided, **both** the actor and principal must have the pe
 | ❌ No | ✅ Yes | ❌ Denied |
 | ❌ No | ❌ No | ❌ Denied |
 
-This ensures agents can never exceed the permissions of the user they're acting for.
+The allow is the **intersection** of the two—neither the actor nor the principal can exceed the other. (An active delegation grant must also exist; see the note above.)
 
 ## Use Cases
 

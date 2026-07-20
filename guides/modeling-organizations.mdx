@@ -12,6 +12,10 @@ Within a project, you often need to model organizational structures: departments
   These patterns are typically implemented at the **Project** level, where authorization is configured. The examples below assume you're working within a project's scope.
 </Note>
 
+<Warning>
+  Some examples below use a `logic` field on a permission and `subject.tags.*`. Conditions actually attach to the **role-permission edge** (`condition`), and **subject-tag matching is not enforced yet** (see the [roadmap](/roadmap)). See [Conditional Permissions](/concepts/conditional-permissions).
+</Warning>
+
 ## Common Organizational Patterns
 
 ### Flat Teams
@@ -62,8 +66,8 @@ Model each organizational unit as a scope within your project:
 # Define org unit scope types at the project level
 curl -X POST 'https://api.example.com/scope-types/batch' \
   -d '[
-    {"id": "type_department", "name": "Department", "config": {"permissionMode": "merge"}},
-    {"id": "type_team", "name": "Team", "config": {"permissionMode": "merge"}}
+    {"id": "type_department", "name": "Department", "config": {"permissionMode": "additive"}},
+    {"id": "type_team", "name": "Team", "config": {"permissionMode": "additive"}}
   ]'
 
 # Define hierarchy (departments under environments, teams under departments)

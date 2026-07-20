@@ -35,7 +35,7 @@ A **resource** represents an entity in your application that you want to protect
 |----------|------|-------------|
 | `id` | `string` | Unique Bedrock identifier |
 | `resourceTypeId` | `string` | Reference to the resource type |
-| `scopeId` | `string` | Owning scope |
+| `ownerScopeId` | `string` | The scope that owns this resource |
 | `externalResourceId` | `string` | Your system's identifier |
 | `displayName` | `string?` | Human-readable name |
 | `createdAt` | `string` | Creation timestamp |
@@ -56,7 +56,7 @@ curl -X POST 'https://api.example.com/resource-types' \
 curl -X POST 'https://api.example.com/resources' \
   -d '{
     "resourceTypeId": "rtype_document",
-    "scopeId": "scope_engineering",
+    "ownerScopeId": "scope_engineering",
     "externalResourceId": "doc-123",
     "displayName": "Q4 Planning Doc"
   }'
@@ -108,17 +108,23 @@ const decision = await bedrock.evaluate({
 
 ## Resource Ownership
 
-The `scopeId` on a resource indicates ownership. A document owned by the Engineering scope is primarily associated with that scope:
+A resource's `ownerScopeId` is the **scope** that owns it (it also serves as the always-reachable scope for the reachability gate—see [Resource Scope Links](/resources/resource-scope-links)). It is a scope, **not** a subject.
 
 ```bash
 curl -X POST 'https://api.example.com/resources' \
   -d '{
     "resourceTypeId": "rtype_document",
-    "scopeId": "scope_engineering",  # Owner scope
+    "ownerScopeId": "scope_engineering",
     "externalResourceId": "doc-456",
     "displayName": "Engineering Handbook"
   }'
 ```
+
+<Note>
+  To make a **subject** an owner of a resource—so the engine grants that subject an owner
+  role's permissions on it—use a resource-ownership grant (`owns(subject, resource, role)`),
+  which the engine evaluates as its own leg. That is distinct from `ownerScopeId`.
+</Note>
 
 ## Common Patterns
 

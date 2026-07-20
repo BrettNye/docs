@@ -1,0 +1,49 @@
+---
+title: 'Roadmap'
+description: 'Capabilities that are documented or designed but not yet enforced'
+icon: 'road'
+---
+
+This page tracks capabilities that are **documented ahead of enforcement**. Authorization rules that depend on a not-yet-shipped capability **fail closed** (deny) until it lands—so use the "available today" alternatives noted below in the meantime.
+
+<Note>
+  This is a living page. If something here is blocking you, tell us—prioritization is demand-driven.
+</Note>
+
+## Planned
+
+### Subject-tag attribute matching (ABAC)
+
+**Status:** planned — not yet enforced.
+
+Today the engine loads a **resource's** tags into the evaluation context (exposed as a top-level `tags` map and `tagList`, usable in role-permission and resource-policy conditions). It does **not** load a **subject's** tags, so conditions that reference `subject.tags.*` are always undefined and never grant. See [Tag-Based Access Control](/tags/tag-based-access).
+
+**Planned:** load the acting subject's tags during evaluation and expose them (e.g. `subject.tags.*`) so subject↔resource tag matching works as documented.
+
+**Available today** for attribute-based rules: resource-side tag conditions, [`subject.meta.*`](/concepts/conditional-permissions) attributes, [resource policies](/resources/resource-policies), and resource ownership.
+
+### Resource attributes in conditions
+
+**Status:** planned — not yet enforced.
+
+The `resource` binding in a json-logic condition currently exposes `id`, `externalResourceId`, `resourceTypeId`, `resourceType`, `ownerScopeId`, and `displayName` only. Fields such as `resource.createdBy`, `resource.ownerId`, and custom `resource.meta.*` are **not** available, so conditions referencing them never grant.
+
+**Planned:** expose additional resource attributes (e.g. `createdBy`, `createdAt`, custom metadata) in the condition context.
+
+**Available today:** resource **tags** (top-level `tags` / `tagList`) for classification, and resource **ownership** (`owns(subject, resource, role)`) for owner-based access.
+
+### Resource-collection match operators
+
+**Status:** partially broken — pending a schema/matcher reconciliation.
+
+The resource-collection `match` schema and the engine's matcher use **different operator vocabularies**, so some rules validate but are silently ignored:
+
+- **`fields`** — only `in`, `gt`, `gte`, `lt`, `lte`, `contains`, and bare equality (`{"field": "value"}`) both validate and work. `eq`, `ne`, `nin`, `startsWith`, `endsWith`, `regex` are silently ignored (the matcher reads `equals`/`notIn`/`exists`).
+- **`time`** — **non-functional today**: the schema accepts `before`/`after`/`between`, but the matcher reads `eq`/`gt`/`gte`/`lt`/`lte`, so no time rule takes effect.
+- **`patterns`** — matched as a **regex** (`new RegExp`), not a glob.
+
+Because a silently-ignored filter makes a collection match *more* than intended (and collections back resource policies), this is worth reconciling.
+
+**Planned:** align the schema and matcher on one operator set so `fields` and `time` rules behave as written.
+
+**Reliable today:** `tags`, `patterns` (as regex), `fields` with `in`/`gt`/`gte`/`lt`/`lte`/`contains`/bare-equality, `condition`, and `any`/`all`/`none`.

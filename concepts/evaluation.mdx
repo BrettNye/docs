@@ -40,43 +40,22 @@ const decision = await bedrock.evaluate(input);
 
 ## Evaluation Steps
 
-The engine evaluates permissions in a specific order, with earlier steps taking precedence:
+The engine works through several legs to reach a decision—roughly in this order:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  1. RESOURCE POLICIES (highest priority)                    │
-│     ├── Get policies targeting the specific resource        │
-│     ├── Get collections matching the resource               │
-│     ├── Get policies targeting those collections            │
-│     ├── Sort by priority (highest first)                    │
-│     ├── Evaluate subject and context conditions             │
-│     └── If a policy matches → return allow/deny immediately │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  2. RESOURCE HIERARCHY INHERITANCE                          │
-│     ├── If resource has parents with cascade: inherit       │
-│     ├── Check ancestor permissions recursively              │
-│     └── Return if any ancestor grants permission            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│  3. ROLE-BASED PERMISSIONS                                  │
-│     ├── Resolve actor → get memberships in scope hierarchy  │
-│     ├── Collect role assignments for memberships            │
-│     ├── Gather permissions from assigned roles              │
-│     ├── Apply scope overrides (role, permission, role-perm) │
-│     ├── Match action & resource pattern                     │
-│     ├── Evaluate conditional permissions (JSON Logic)       │
-│     └── Return decision with matching permissions           │
-└─────────────────────────────────────────────────────────────┘
-```
+1. **Reachability gate** *(when resource-scope gating is enabled)* — if a concrete resource is not reachable in the requested scope, deny outright.
+2. **Delegation grant** *(when `onBehalfOf` is set)* — an active delegation grant authorizing the actor to act for the principal in this scope must exist, or the request is denied (`NO_DELEGATION_GRANT`) before any RBAC runs.
+3. **Resource policies** — policies targeting the resource (and any collections it matches) are evaluated **before** RBAC, sorted by priority; a matching `allow` or `deny` decides. Policies can grant access beyond RBAC, and a policy `deny` can override an ownership grant.
+4. **Role-based permissions (RBAC)** — resolve the subject's grants, composed across the scope chain per the request scope's [`permissionMode`](/concepts/scope-types) (default `override` = that scope only), apply [scope overrides](/concepts/overrides), match action + resource pattern, and evaluate any [conditions](/concepts/conditional-permissions) fail-closed.
+5. **Ownership** — if RBAC did not grant and a concrete resource is present, an active `owns(subject, resource, role)` row grants that owner-role's matching permissions (also routed through overrides and fail-closed conditions).
+6. **Resource hierarchy** — still denied? If the resource has ancestors linked with `cascade: 'inherit'`, a parent resource can grant access.
+
+When acting on behalf of another subject, the **actor leg** and the **principal leg** are each evaluated this way and the results intersected (see [Delegation](#delegation-on-behalf-of)).
 
 <Note>
-  Resource policies are evaluated first and can short-circuit the entire evaluation. 
-  This makes them ideal for explicit allow/deny rules on sensitive resources.
+  These are not all strict priority tiers—delegation runs only for on-behalf-of
+  requests, and the hierarchy fallback runs only when direct RBAC denies **and** a
+  concrete resource is present. A resource-policy `deny` is the strongest single
+  signal for locking down a sensitive resource.
 </Note>
 
 ## The Decision Output
@@ -125,7 +104,8 @@ Roles at Acme Corp:
 - Viewer (permissions: read)
 
 Jane has:
-- Membership in Engineering
+- Membership in Production (memberships are scope-specific—she needs one
+  at the exact scope she is being evaluated in)
 - Role assignment: Editor
 
 Override:
@@ -147,10 +127,11 @@ const input = {
 
 ```
 1. Resolve Actor: subject_jane
-   └── Found membership in scope_engineering (parent of production)
+   └── Look up memberships at scope_production (exact scope requested)
+   └── Found membership_jane_prod at scope_production
 
 2. Collect Roles: 
-   └── role_editor (via membership_jane_eng)
+   └── role_editor (via membership_jane_prod)
 
 3. Gather Permissions:
    └── perm_read (document:read:*)
@@ -169,7 +150,7 @@ const input = {
 
 7. Return Decision:
    └── allowed: false
-   └── explanation: "Permission 'write' is disabled in this scope"
+   └── explanation: "No permission for write:document in scope scope_production"
 ```
 
 ## Delegation (On Behalf Of)
@@ -186,10 +167,11 @@ const input = {
 };
 ```
 
-When `onBehalfOf` is provided:
-1. The actor must have the permission
-2. The principal (`onBehalfOf`) must also have the permission
-3. Both must pass for the action to be allowed
+When `onBehalfOf` is provided, delegation is **co-authorization**, not authority-borrowing:
+1. An **active delegation grant** authorizing the actor to act for the principal in this scope must exist—otherwise the request is denied (`NO_DELEGATION_GRANT`) before any permission check.
+2. The actor must have the permission (the **actor leg**).
+3. The principal (`onBehalfOf`) must also have the permission (the **principal leg**).
+4. The allow is the **intersection**—both legs must pass, and neither party can exceed the other. See [Delegation](/delegation) for how to create grants.
 
 ```typescript
 const decision = await bedrock.evaluate(input);
@@ -225,15 +207,15 @@ The engine will:
 
 ## Conditional Evaluation
 
-Permissions with `logic` fields are evaluated against the context:
+Conditions are attached to the **role-permission edge** (`condition`), not to the permission itself, and are evaluated against the context:
 
 ```typescript
-// Permission with condition
+// Role-permission edge with a condition
 {
-  "action": "read",
-  "resourceType": "document",
-  "logic": {
-    "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
+  "roleId": "role_editor",
+  "permissionId": "perm_read_document",
+  "condition": {
+    "in": [{"var": "subject.meta.department"}, {"var": "tags.departments"}]
   }
 }
 
@@ -262,31 +244,31 @@ The evaluation context includes:
 | Variable | Source | Example |
 |----------|--------|---------|
 | `subject.id` | Actor | `"subject_jane"` |
-| `subject.type` | Actor | `"user"` |
+| `subject.subjectType` | Actor | `"user"` |
+| `subject.externalId` | Actor | `"user-123"` |
 | `subject.meta.*` | Actor metadata | `subject.meta.department` |
 | `resource.id` | Resource | `"resource_123"` |
-| `resource.type` | Resource type | `"document"` |
-| `resource.tags.*` | Resource tags | `resource.tags.departments` |
-| `context.*` | Custom context | `context.hour`, `context.ip` |
+| `resource.externalResourceId` | Resource | `"my-doc-123"` |
+| `resource.resourceType` | Resource type key | `"document"` |
+| `resource.resourceTypeId` | Resource type ID | `"rt_doc"` |
+| `resource.ownerScopeId` | Owning scope | `"scope_eng"` |
+| `resource.displayName` | Resource | `"Q3 Report"` |
+| `tags.*` | Resource tags (identifier→label) | `tags.classification` |
+| `tagList` | Resource tags (array of objects) | `tagList[].identifier` |
+| `<your keys>` | Custom `context` keys, spread at **top level** (not under `context.`) | `ip`, `region` |
+| `time.hour` / `time.dayOfWeek` | Trusted server clock (caller-supplied `time`/`now` is **ignored**) | `time.hour` |
 
-## Bulk Evaluation
-
-Evaluate multiple permissions at once:
-
-```typescript
-const inputs = [
-  { actor, scopeId, action: "read", resource: { resourceType: "document" } },
-  { actor, scopeId, action: "write", resource: { resourceType: "document" } },
-  { actor, scopeId, action: "delete", resource: { resourceType: "document" } }
-];
-
-const decisions = await bedrock.evaluateBulk(inputs);
-// [{ allowed: true }, { allowed: true }, { allowed: false }]
-```
+<Note>
+  The resolved `subject`, `resource`, `tags`, and `tagList` overwrite any
+  same-named keys you pass in `context`. There is no `resource.meta` or
+  `resource.ownerId`—custom resource data must be supplied via tags or your own
+  context. See [Conditional Permissions](/concepts/conditional-permissions) for
+  the full context shape.
+</Note>
 
 ## Effective Permissions
 
-Get all permissions a subject has in a scope:
+Get all permissions a subject has in a scope. The engine exposes `listEffectivePermissions(subjectId, scopeId)` with **positional** arguments:
 
 ```typescript
 interface EffectivePermissionSummary {
@@ -296,10 +278,7 @@ interface EffectivePermissionSummary {
   sourceRoles: BedrockRole[];
 }
 
-const summary = await bedrock.getEffectivePermissions({
-  subjectId: "subject_jane",
-  scopeId: "scope_engineering"
-});
+const summary = await bedrock.listEffectivePermissions("subject_jane", "scope_engineering");
 
 // [
 //   { resourceType: "document", action: "read", permissions: [...], sourceRoles: [...] },
@@ -315,7 +294,7 @@ The decision includes debugging information:
 const decision = await bedrock.evaluate(input);
 
 console.log(decision.explanation);
-// "Allowed via role 'Editor' which grants 'document:write:*'"
+// "Permission write:document granted via roles: role_editor"
 
 console.log(decision.matches);
 // [{ permission: {...}, sourceRoleIds: ["role_editor"] }]
@@ -330,8 +309,8 @@ console.log(decision.evaluatedContext);
   <Accordion title="Cache membership lookups">
     Membership and role data changes infrequently. Cache it per-request or with short TTLs.
   </Accordion>
-  <Accordion title="Use bulk evaluation">
-    When checking multiple permissions, use `evaluateBulk` instead of multiple single calls.
+  <Accordion title="Prefer effective permissions for many checks">
+    When you need many actions for one subject and scope (e.g. rendering a UI), call `listEffectivePermissions(subjectId, scopeId)` once instead of many single `evaluate` calls.
   </Accordion>
   <Accordion title="Minimize context size">
     Only include context data needed for your conditional permissions.

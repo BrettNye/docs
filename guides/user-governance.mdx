@@ -12,7 +12,7 @@ User governance in Bedrock follows a hierarchical Role-Based Access Control (RBA
 
 <CardGroup cols={2}>
   <Card title="Subjects" icon="user">
-    Users are registered as subjects with `type: "user"`
+    Users are registered as subjects with `subjectType: "user"`
   </Card>
   <Card title="Memberships" icon="id-card">
     Memberships connect users to scopes
@@ -36,7 +36,7 @@ Let's set up a typical enterprise structure with organizations, departments, and
 curl -X POST 'https://api.example.com/scope-types/batch' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"id": "type_org", "name": "Organization", "config": {"permissionMode": "define"}},
+    {"id": "type_org", "name": "Organization", "config": {"permissionMode": "override"}},
     {"id": "type_dept", "name": "Department", "config": {"permissionMode": "inherit"}},
     {"id": "type_team", "name": "Team", "config": {"permissionMode": "inherit"}}
   ]'
@@ -76,7 +76,7 @@ curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
 
 ### 3. Define Roles at Different Levels
 
-Roles can be defined at any scope level and inherited by child scopes:
+Roles can be defined at any scope level and then assigned to memberships at that scope or any child scope (assignment is explicit—defining a role higher up does not grant it automatically lower down):
 
 ```bash
 # Create all roles at once
@@ -156,7 +156,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_platform",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -173,20 +173,23 @@ curl -X POST 'https://api.example.com/role-assignments' \
 curl -X DELETE 'https://api.example.com/role-assignments/role_team_lead/mem_mike_platform'
 ```
 
-## Permission Inheritance
+## Memberships and `permissionMode`
 
-Permissions flow down the scope hierarchy:
+Whether access flows down the scope hierarchy depends on the request scope's [`permissionMode`](/concepts/scope-types). Under the default **`override`** mode, Bedrock evaluates a subject's memberships at the **exact scope** of the request—a membership at an override scope does not grant access beneath it:
 
 ```
-Organization (Org Admin, Org Member roles)
-    ↓ inherits
-Department (Dept Manager role)
-    ↓ inherits
-Team (Team Lead role)
+Organization (override)  ─── membership here grants access HERE only
+Department   (inherit)   ─── pulls grants from its ancestors
+Team         (inherit)   ─── pulls grants from its ancestors
 ```
+
+Scope types set to **`inherit`** or **`additive`** (like the Department and Team above) **do** draw on ancestor grants.
 
 <Note>
-  Users at a parent scope can access child scopes based on their role permissions. Use scope overrides to restrict this inheritance when needed.
+  Under `override`, to give a user access across several scopes, create a membership (and role
+  assignment) at **each** scope. Separately, **resource** hierarchies cascade via
+  `cascade: 'inherit'` regardless of `permissionMode`. See [Scope Types](/concepts/scope-types),
+  [Scopes](/concepts/scopes), and [Evaluation](/concepts/evaluation).
 </Note>
 
 ## Best Practices

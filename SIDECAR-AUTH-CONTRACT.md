@@ -146,12 +146,22 @@ This design lets a user act in any tenant they belong to by supplying `X-Tenant-
 
 ---
 
+## API Versioning
+
+All application endpoints are served under a `/v1` URI-version prefix (e.g. `/v1/evaluate`, `/v1/effective-permissions`, `/v1/scopes/:id/memberships`, `/v1/tenants`). The prefix is applied by NestJS URI versioning (`defaultVersion: '1'`).
+
+The load-balancer health checks are **version-neutral** and remain unprefixed: `GET /` and `GET /health`.
+
+> Note: management resources mount at the **root** of the versioned surface (`/v1/scopes/...`, `/v1/projects/...`, `/v1/workspaces/...`, `/v1/tenants`, `/v1/users/...`) — there is no `/management` path segment.
+
+---
+
 ## Request Examples
 
 ### Service api-key — authorization decision
 
 ```bash
-curl -X POST 'https://your-bedrock-sidecar/evaluate' \
+curl -X POST 'https://your-bedrock-sidecar/v1/evaluate' \
   -H 'x-api-key: sk_svc_your_service_key' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -162,10 +172,10 @@ curl -X POST 'https://your-bedrock-sidecar/evaluate' \
   }'
 ```
 
-### User JWT — tenant-scoped management (read memberships)
+### User JWT — tenant-scoped management (read scope memberships)
 
 ```bash
-curl -X GET 'https://your-bedrock-sidecar/management/memberships' \
+curl -X GET 'https://your-bedrock-sidecar/v1/scopes/scope_project_crm_prod/memberships' \
   -H 'Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...' \
   -H 'X-Tenant-Id: tenant_acme'
 ```
@@ -173,7 +183,7 @@ curl -X GET 'https://your-bedrock-sidecar/management/memberships' \
 ### Platform api-key — control-plane operation
 
 ```bash
-curl -X POST 'https://your-bedrock-sidecar/management/tenants' \
+curl -X POST 'https://your-bedrock-sidecar/v1/tenants' \
   -H 'x-api-key: pk_platform_your_platform_key' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -196,4 +206,4 @@ curl -X POST 'https://your-bedrock-sidecar/management/tenants' \
 
 ---
 
-*This document is the input contract for W3.3 (SDK + API versioning). Changes to guard behavior or claim validation must be reflected here first.*
+*This document is the auth contract realized by W3.3 (SDK + `/v1` API versioning). Changes to guard behavior, claim validation, or the versioned route surface must be reflected here first.*

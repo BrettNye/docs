@@ -230,6 +230,24 @@ const decision = await bedrock.evaluate({
 });
 ```
 
+## Reachability Gate (`BEDROCK_RESOURCE_SCOPE_GATE`)
+
+An opt-in authorization containment gate. When enabled, a concrete resource must
+be reachable from the evaluation scope (its owner scope, or an explicit
+resource-scope link) before RBAC/policy evaluation runs. Configured via the
+`BEDROCK_RESOURCE_SCOPE_GATE` environment variable:
+
+- `off` (default) — no gate; backward-compatible.
+- `links-fallback` — the safe on-ramp. Only resources with at least one scope
+  link are gated; a resource with zero links is treated as globally reachable,
+  so enabling this cannot break a deployment that has not created links.
+- `strict` — every concrete resource is gated: a non-owner, non-linked scope is
+  never reachable.
+
+Strict only changes behavior for deployments that register concrete resources
+reachable from a non-owner scope. RuleFORGE is unaffected: it uses type-based
+RBAC and registers no concrete resources, so the gate never fires there.
+
 ## Patterns
 
 ### Pattern 1: Shared Resources Library

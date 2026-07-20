@@ -20,7 +20,12 @@ A **permission** defines a specific access right: the ability to perform an **ac
 | `key` | `string` | Derived unique key: `{resourceType}:{action}:{resourcePattern}` |
 | `label` | `string?` | Human-readable name |
 | `description` | `string?` | What this permission allows |
-| `logic` | `Record<string, unknown>?` | Conditional rules (JSON Logic) |
+
+<Note>
+  A permission has **no** condition field. JSON Logic conditions attach to the
+  **role-permission edge** (`BedrockRolePermission.condition`)—see [Conditional
+  Permissions](/concepts/conditional-permissions).
+</Note>
 
 ## Creating Permissions
 
@@ -101,78 +106,44 @@ Patterns specify which resources the permission applies to:
 | Pattern | Meaning |
 |---------|---------|
 | `*` | All resources of this type |
-| `{id}` | A specific resource by ID |
-| `owned` | Resources owned by the subject |
-| `{category}/*` | Resources in a category |
+| `{id}` | A specific resource by exact ID match |
 
 ```bash
 # Wildcard: all documents
 {"resourcePattern": "*", "key": "document:read:*"}
 
-# Specific resource
+# Specific resource (exact match)
 {"resourcePattern": "doc-123", "key": "document:read:doc-123"}
-
-# Category pattern
-{"resourcePattern": "financial/*", "key": "document:read:financial/*"}
 ```
+
+<Note>
+  Pattern matching currently supports only `*` (all resources of the type) and
+  **exact** string match against the resource's id/pattern. Prefix, category, or
+  glob patterns such as `financial/*` are **not** evaluated as globs—a permission
+  with `resourcePattern: "financial/*"` would only match a resource whose
+  identifier is the literal string `financial/*`. To scope by ownership or
+  category, use [conditional permissions](/concepts/conditional-permissions) with
+  tags instead.
+</Note>
 
 ## Conditional Permissions
 
-Use the `logic` field to add conditions using JSON Logic:
-
-### Based on Subject Metadata
+A permission itself has **no** condition field. Conditions attach to the **role-permission edge** (`condition`)—they qualify a permission *for a specific role*, so the same permission can be unconditional for one role and conditional for another.
 
 ```bash
-curl -X POST 'https://api.example.com/permissions' \
+# Editors can only read classified docs when their clearance level is >= 3
+curl -X POST 'https://api.example.com/role-permissions' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "scopeId": "scope_org",
-    "action": "read",
-    "resourceType": "classified",
-    "resourcePattern": "*",
-    "key": "classified:read:*",
-    "label": "Read Classified Documents",
-    "logic": {
+    "roleId": "role_editor",
+    "permissionId": "perm_classified_read",
+    "condition": {
       ">=": [{"var": "subject.meta.clearanceLevel"}, 3]
     }
   }'
 ```
 
-### Based on Resource Tags
-
-```bash
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{
-    "scopeId": "scope_org",
-    "action": "read",
-    "resourceType": "document",
-    "resourcePattern": "*",
-    "key": "document:read:*:dept-match",
-    "label": "Read Department Documents",
-    "logic": {
-      "in": [{"var": "subject.meta.department"}, {"var": "resource.tags.departments"}]
-    }
-  }'
-```
-
-### Time-Based Conditions
-
-```bash
-curl -X POST 'https://api.example.com/permissions' \
-  -d '{
-    "scopeId": "scope_org",
-    "action": "access",
-    "resourceType": "system",
-    "resourcePattern": "*",
-    "key": "system:access:*:business-hours",
-    "label": "Access During Business Hours",
-    "logic": {
-      "and": [
-        {">=": [{"var": "context.hour"}, 9]},
-        {"<=": [{"var": "context.hour"}, 17]}
-      ]
-    }
-  }'
-```
+The context exposes `subject.*` (incl. `subject.meta.*`), the resolved `resource` core fields, resource `tags`/`tagList`, the trusted clock (`time.hour`, `time.dayOfWeek`), and any top-level custom `context` keys. See [Conditional Permissions](/concepts/conditional-permissions) for the full variable list, the trusted-clock behavior, and fail-closed evaluation.
 
 ## Permission Inheritance
 
@@ -191,16 +162,16 @@ Organization (defines document:read:*, document:write:*)
 You can disable a permission at a child scope:
 
 ```bash
-# Disable delete permission in production
+# Deactivate the delete permission in production (permission override)
 curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_production",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
-Or disable a permission for a specific role:
+Or revoke a permission for a specific role (role-permission override):
 
 ```bash
 # Editors can't delete in archived projects
@@ -209,9 +180,14 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_archived",
     "roleId": "role_editor",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
+
+<Note>
+  Override state values: permission and role overrides use `active` / `inactive` / `inherit`;
+  role-permission overrides use `grant` / `revoke` / `inherit`.
+</Note>
 
 ## Connecting Permissions to Roles
 
