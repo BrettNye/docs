@@ -1,0 +1,23 @@
+---
+title: 'Roadmap'
+description: 'Capabilities that are documented or designed but not yet enforced'
+icon: 'road'
+---
+
+This page tracks capabilities that are **documented ahead of enforcement**. Authorization rules that depend on a not-yet-shipped capability **fail closed** (deny) until it lands—so use the "available today" alternatives noted below in the meantime.
+
+<Note>
+  This is a living page. If something here is blocking you, tell us—prioritization is demand-driven.
+</Note>
+
+## Planned
+
+### Subject-tag attribute matching (ABAC)
+
+**Status:** planned — not yet enforced.
+
+Today the engine loads a **resource's** tags into the evaluation context (exposed as a top-level `tags` map and `tagList`, usable in role-permission and resource-policy conditions). It does **not** load a **subject's** tags, so conditions that reference `subject.tags.*` are always undefined and never grant. See [Tag-Based Access Control](/tags/tag-based-access).
+
+**Planned:** load the acting subject's tags during evaluation and expose them (e.g. `subject.tags.*`) so subject↔resource tag matching works as documented.
+
+**Available today** for attribute-based rules: resource-side tag conditions, [`subject.meta.*`](/concepts/conditional-permissions) attributes, [resource policies](/resources/resource-policies), and resource ownership.

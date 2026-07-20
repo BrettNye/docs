@@ -4,6 +4,17 @@ description: 'Use tags in permission conditions for attribute-based access'
 icon: 'key'
 ---
 
+<Warning>
+  **Not yet enforced — see the [roadmap](/roadmap).** This page describes *subject-tag*
+  matching (comparing a **subject's** tags to a **resource's** tags). The engine does
+  **not** currently load subject tags into evaluation, so `subject.tags.*` is always
+  undefined and the matching patterns below **never grant today**. For attribute-based
+  rules you can use right now: resource-side tag conditions, [`subject.meta.*`](/concepts/conditional-permissions)
+  attributes, [resource policies](/resources/resource-policies), and resource ownership.
+  The examples below describe the *intended* model. Also note that conditions attach to
+  the **role-permission edge** (`condition`), not a permission `logic` field.
+</Warning>
+
 ## Overview
 
 Tag-based access control (ABAC) uses tags on subjects and resources to make dynamic authorization decisions. Instead of static role assignments, access is determined by matching attributes.
@@ -274,14 +285,21 @@ In tag-based conditions, you have access to:
 | Variable | Description |
 |----------|-------------|
 | `subject.id` | Subject's Bedrock ID |
-| `subject.type` | Subject type (user, agent, etc.) |
+| `subject.subjectType` | Subject type (`user`, `agent`, `service`, `api_key`) |
 | `subject.meta.*` | Subject metadata fields |
-| `subject.tags.*` | Subject's tags by group key |
+| `subject.tags.*` | Subject's tags — **planned, not loaded yet** (see [roadmap](/roadmap)) |
 | `resource.id` | Resource's Bedrock ID |
-| `resource.type` | Resource type key |
-| `resource.meta.*` | Resource metadata |
-| `resource.tags.*` | Resource's tags by group key |
-| `context.*` | Custom context passed in evaluation |
+| `resource.resourceType` | Resource type key |
+| `resource.ownerScopeId` | Resource's owner scope |
+| `tags.<identifier>` / `tagList` | Resource tags — a **top-level** identifier→label map plus an array (not `resource.tags`) |
+| `time.hour` / `time.dayOfWeek` | Trusted server clock |
+| `<your keys>` | Custom `context` keys, spread at **top level** |
+
+<Note>
+  There is no `resource.meta`, `resource.type`, or `subject.type` in the condition
+  context—use `resource.resourceType` and `subject.subjectType`, and put custom data in
+  `subject.meta`, resource tags, or top-level context keys.
+</Note>
 
 ## Debugging Tag Conditions
 
@@ -296,20 +314,12 @@ const decision = await bedrock.evaluate({
   includeResourceTags: true
 });
 
-console.log(decision.evaluatedContext);
-// {
-//   subject: {
-//     id: "subject_jane",
-//     tags: { departments: ["engineering"] }
-//   },
-//   resource: {
-//     id: "resource_doc_123",
-//     tags: { departments: ["finance"] }
-//   }
-// }
+// The engine exposes the RESOURCE's tags at the top level of the condition
+// context as `tags` (identifier -> label) and `tagList`. The acting subject's
+// tags are NOT loaded yet (see the roadmap), so there is no `subject.tags`.
 
 console.log(decision.explanation);
-// "Denied: No matching department tags"
+// e.g. "No permission for read:document in scope scope_org"
 ```
 
 ## Best Practices
