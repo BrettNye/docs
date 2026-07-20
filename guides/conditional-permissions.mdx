@@ -6,11 +6,17 @@ icon: 'code'
 
 ## Overview
 
-Conditional permissions use **JSON Logic** to make dynamic authorization decisions based on subject attributes, resource attributes, tags, and context. This enables attribute-based access control (ABAC) beyond simple role assignments.
+Conditional permissions use **JSON Logic** to make dynamic authorization decisions based on subject attributes, resource attributes, tags, and context.
+
+<Warning>
+  **See the [canonical Conditional Permissions page](/concepts/conditional-permissions) for the exact model.** Two things this guide's examples get wrong:
+  1. Conditions attach to the **role-permission edge** (`condition`), **not** a `logic` field on a permission. A permission has no `logic` field—one placed there is silently ignored (the grant becomes unconditional).
+  2. **`subject.tags.*` matching is not enforced yet** (the engine doesn't load subject tags—see the [roadmap](/roadmap)). Resource-side `tags`, `subject.meta.*`, and the trusted-clock `time.*` do work today.
+</Warning>
 
 ## JSON Logic Basics
 
-Bedrock uses [JSON Logic](https://jsonlogic.com/) for permission conditions. The `logic` field on a permission contains a JSON Logic expression that must evaluate to `true` for the permission to apply.
+Bedrock uses [JSON Logic](https://jsonlogic.com/) for conditions. A condition on a **role-permission edge** (`condition`) must evaluate to `true` for that role to grant the permission.
 
 ### Simple Comparison
 
@@ -65,7 +71,7 @@ Bedrock uses [JSON Logic](https://jsonlogic.com/) for permission conditions. The
 {">=": [{"var": "subject.meta.clearance"}, {"var": "resource.meta.requiredClearance"}]}
 
 // Less than
-{"<": [{"var": "context.hour"}, 17]}
+{"<": [{"var": "time.hour"}, 17]}
 
 // Less than or equal
 {"<=": [{"var": "subject.meta.age"}, 65]}
@@ -187,8 +193,8 @@ curl -X POST 'https://api.example.com/permissions' \
     "label": "Access During Business Hours",
     "logic": {
       "and": [
-        {">=": [{"var": "context.hour"}, 9]},
-        {"<=": [{"var": "context.hour"}, 17]},
+        {">=": [{"var": "time.hour"}, 9]},
+        {"<=": [{"var": "time.hour"}, 17]},
         {"in": [{"var": "context.dayOfWeek"}, [1, 2, 3, 4, 5]]}
       ]
     }

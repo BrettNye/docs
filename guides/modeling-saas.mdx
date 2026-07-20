@@ -205,7 +205,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_env_production",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "inactive"
   }'
 
 # Disable deploy for Developers in production (only Admins can deploy)
@@ -214,7 +214,7 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_env_production",
     "roleId": "role_developer",
     "permissionId": "perm_deploy",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
 
@@ -228,8 +228,8 @@ Projects can define custom scope types for their domain:
 # Define custom scope types for a construction project
 curl -X POST 'https://api.example.com/scope-types/batch' \
   -d '[
-    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
-    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
+    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "additive"}},
+    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "additive"}}
   ]'
 
 # Define the hierarchy within the project
