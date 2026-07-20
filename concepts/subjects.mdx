@@ -13,7 +13,7 @@ A **subject** is any entity that can be granted permissions in Bedrock. This inc
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | `string` | Unique Bedrock identifier |
-| `subjectType` | `SubjectTypeEnum` | Type of subject: `user`, `agent`, `service`, `system` |
+| `subjectType` | `SubjectTypeEnum` | Type of subject: `user`, `agent`, `service`, `api_key` |
 | `externalId` | `string` | Your system's identifier (e.g., user ID from your auth provider) |
 | `displayName` | `string?` | Human-readable name |
 | `meta` | `Record<string, unknown>?` | Custom metadata |
@@ -72,18 +72,22 @@ curl -X POST 'https://api.example.com/subjects' \
   }'
 ```
 
-### System
+### API Key
 
-Internal system processes, cron jobs, or platform-level operations.
+A machine credential acting as its own principal—used when an API key authenticates directly (see [authentication](/api-reference/introduction)) rather than on behalf of a user.
 
 ```bash
 curl -X POST 'https://api.example.com/subjects' \
   -d '{
-    "subjectType": "system",
-    "externalId": "nightly-cleanup",
-    "displayName": "Nightly Cleanup Job"
+    "subjectType": "api_key",
+    "externalId": "ci-deploy-key",
+    "displayName": "CI Deploy Key"
   }'
 ```
+
+<Note>
+  For internal jobs, cron tasks, or platform operations, model them as a `service` subject.
+</Note>
 
 ## Memberships
 
@@ -151,7 +155,7 @@ curl -X POST 'https://api.example.com/role-assignments' \
   }'
 ```
 
-Jane now has Editor permissions in the Engineering scope and all its descendants.
+Jane now has Editor permissions in the Engineering scope. (Whether that reaches descendant scopes depends on the scope type's [`permissionMode`](/concepts/scope-types)—by default, `override`, it does **not**.)
 
 ## Complete Example: Adding an AI Agent
 
@@ -225,12 +229,12 @@ curl -X POST 'https://api.example.com/subjects' \
   }'
 ```
 
-Metadata can be used in permission conditions:
+Metadata can be used in conditions, which attach to the **role-permission edge** (`condition`):
 
 ```json
 {
-  "logic": {
-    ">=": [{"var": "subject.meta.clearanceLevel"}, "secret"]
+  "condition": {
+    "==": [{"var": "subject.meta.department"}, "Engineering"]
   }
 }
 ```
