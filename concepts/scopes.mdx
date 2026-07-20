@@ -6,7 +6,7 @@ icon: 'sitemap'
 
 ## What is a Scope?
 
-A **scope** is a container that defines an authorization boundary. Scopes form a hierarchy—like folders in a file system—where permissions can be inherited from parent scopes and optionally overridden at child scopes.
+A **scope** is a container that defines an authorization boundary. Scopes form a hierarchy—like folders in a file system. Whether a subject's grants flow down that hierarchy is controlled by each scope type's [`permissionMode`](/concepts/scope-types): under the default **`override`** mode a membership is evaluated at exactly the scope you ask about, while **`inherit`** and **`additive`** compose grants up the ancestor chain. The hierarchy is also used for cascading **scope overrides** and for **resource inheritance**.
 
 Every authorization decision in Bedrock happens within a scope context.
 
@@ -60,22 +60,28 @@ curl -X GET 'https://api.example.com/scopes/scope_acme/children'
 curl -X GET 'https://api.example.com/scopes/scope_engineering/parents'
 ```
 
-## Permission Inheritance
+## Membership and `permissionMode`
 
-When a subject has a role in a parent scope, they inherit that role's permissions in all child scopes:
+How a subject's memberships combine across the hierarchy is governed by the **request scope's** [`permissionMode`](/concepts/scope-types).
+
+**`override` (the default).** Bedrock looks up the subject's memberships at exactly the requested scope—it does **not** walk up the hierarchy. A role granted at a parent scope does **not** apply at child scopes:
 
 ```
-Organization ─── Subject has "Editor" role here
+Organization ─── Subject has "Editor" membership here
     │
-    ├── Team A ─── Subject inherits "Editor" permissions
+    ├── Team A ─── NO access (no membership at this scope)
     │   │
-    │   └── Project X ─── Subject inherits "Editor" permissions
+    │   └── Project X ─── NO access (no membership at this scope)
     │
-    └── Team B ─── Subject inherits "Editor" permissions
+    └── Team B ─── NO access (no membership at this scope)
 ```
+
+Under `override`, to grant a subject access across multiple scopes you create a membership (and role assignment) at **each** scope where access is needed—granular, per-location control, so holding a role at an organization does not silently grant the same power beneath it.
+
+**`inherit` / `additive`.** Scopes whose type uses these modes **do** draw on ancestor grants: `inherit` falls back to the nearest ancestor that has grants, and `additive` unions the scope's grants with all ancestors. A role held at a parent scope then reaches descendants of that type. Choose the mode per scope type—see [Scope Types](/concepts/scope-types).
 
 <Note>
-  Inheritance flows **downward only**. Having a role in a child scope does not grant access to parent scopes.
+  Membership composition is one axis. **Resource hierarchy** (`cascade: 'inherit'`) and **scope overrides** traverse ancestors independently of `permissionMode`. See [Evaluation](/concepts/evaluation) and [Scope Overrides](/concepts/overrides).
 </Note>
 
 ## Scope-Specific Roles
