@@ -1,12 +1,12 @@
 ---
 title: 'Scope Types'
-description: 'Templates that define how scopes behave and inherit permissions'
+description: 'Templates that define how scopes behave and compose permissions across the hierarchy'
 icon: 'layer-group'
 ---
 
 ## What is a Scope Type?
 
-A **scope type** is a template that defines the behavior of scopes. Think of scope types as "classes" and scopes as "instances"—every scope must have a type that determines how it handles permission inheritance.
+A **scope type** is a template that defines the behavior of scopes. Think of scope types as "classes" and scopes as "instances"—every scope has a type, and the type determines **how the engine resolves a subject's permissions across the scope hierarchy** when a request is evaluated at that scope.
 
 ## Scope Type Properties
 
@@ -14,60 +14,86 @@ A **scope type** is a template that defines the behavior of scopes. Think of sco
 |----------|------|-------------|
 | `id` | `string` | Unique identifier |
 | `name` | `string` | Human-readable name (e.g., "Organization", "Team", "Project") |
-| `config.permissionMode` | `PermissionModeEnum` | How permissions are inherited: `DEFINE` or `MERGE` |
+| `parentTypeId` | `string?` | Optional parent type — constrains which types may contain which |
+| `config.permissionMode` | `'inherit' \| 'override' \| 'additive'` | How permissions compose across the scope chain (see below). **Defaults to `override`.** |
+| `config.canDefinePermissions` | `boolean` | Whether scopes of this type may define their own permissions (default `false`) |
+| `config.canDefineRoles` | `boolean` | Whether scopes of this type may define their own roles (default `true`) |
 
 ## Permission Modes
 
-The `permissionMode` setting controls how a scope type handles inherited permissions:
+`config.permissionMode` controls **whether a scope pulls in a subject's grants from its ancestor scopes** when the engine evaluates a request. There are exactly three modes: `override`, `inherit`, and `additive`.
 
-### DEFINE Mode
+<Note>
+The mode is a property of the scope being **evaluated**. When you call `evaluate` with a `scopeId`, the engine reads *that scope's* type's `permissionMode` to decide whether to look only at that scope or also walk up its parent chain. If a scope or its type is missing a mode, the engine defaults to `override`.
+</Note>
 
-Scopes of this type **define their own permissions** and do not inherit from parents. Use this for top-level organizational boundaries.
+### `override` (default)
+
+A subject's grants are resolved **at the request scope only**. Ancestor scopes are not consulted, so a subject must have a membership *at that exact scope* to be granted anything there.
+
+This is the **default**—used whenever a scope or type has no explicit mode—and the most isolated. Use it for boundaries you don't want authority to cross.
 
 ```bash
 curl -X POST 'https://api.example.com/scope-types' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "id": "scope_type_org",
     "name": "Organization",
-    "config": {"permissionMode": "define"}
+    "config": {"permissionMode": "override"}
   }'
 ```
 
-**Use cases:**
-- Tenant roots in multi-tenant systems
-- Isolated business units
-- Compliance boundaries
+**Use cases:** tenant roots, isolated business units, compliance boundaries.
 
-### MERGE Mode
+### `inherit`
 
-Scopes of this type **inherit and merge** permissions from parent scopes. Child scopes can add additional permissions but start with everything from their parents.
+If the request scope has **no grants** for the subject, the engine falls back to the **nearest ancestor** scope (walking up the parent chain) that does. Nearest-non-empty wins: this is a *fallback*, not a merge—once a scope with grants is found, scopes further up are not added.
 
 ```bash
 curl -X POST 'https://api.example.com/scope-types' \
+  -H 'Content-Type: application/json' \
   -d '{
-    "id": "scope_type_team",
     "name": "Team",
-    "config": {"permissionMode": "merge"}
+    "config": {"permissionMode": "inherit"}
   }'
 ```
 
-**Use cases:**
-- Teams within an organization
-- Projects within a workspace
-- Environments within a project
+**Use cases:** deep hierarchies where a role assigned at a mid-level scope should apply to everything beneath it, without re-assigning at every level.
+
+### `additive`
+
+A subject's grants at the request scope **and all ancestor scopes** are combined (union, de-duplicated by role and permission). A role held anywhere up the chain contributes its permissions at the request scope.
+
+```bash
+curl -X POST 'https://api.example.com/scope-types' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Project",
+    "config": {"permissionMode": "additive"}
+  }'
+```
+
+**Use cases:** organizations where permissions accumulate downward—an Editor at the workspace is also an Editor in every project and environment beneath it, in addition to any scope-specific grants.
+
+<Warning>
+Under **`override` (the default), a role assigned at a *parent* scope does NOT apply to child scopes.** Permissions flow down the hierarchy **only** under `inherit` or `additive`. If you expect an org-level role to reach child scopes, the child scope's type must use `inherit` or `additive`.
+</Warning>
+
+<Note>
+Scope-level [overrides](/concepts/overrides) (disabling a role or permission, or revoking/granting a role-permission edge at a specific scope) are always applied on top of the composed grants—including the request scope's own overrides under `inherit`/`additive`.
+</Note>
 
 ## Scope Type Hierarchy
 
 Scope types form their own hierarchy that defines **which types can contain which**. This is separate from the scope hierarchy itself.
 
 ```
-Organization (DEFINE)
+Organization
     │
-    └── can contain ──▶ Team (MERGE)
+    └── can contain ──▶ Team
                             │
-                            └── can contain ──▶ Project (MERGE)
+                            └── can contain ──▶ Project
                                                     │
-                                                    └── can contain ──▶ Environment (MERGE)
+                                                    └── can contain ──▶ Environment
 ```
 
 ### Creating Scope Type Hierarchy
@@ -95,97 +121,49 @@ curl -X POST 'https://api.example.com/scope-type-hierarchy' \
 
 ## Built-in Scope Types (Bedrock Cloud)
 
-Bedrock Cloud provides these default scope types:
-
-| Type | Permission Mode | Purpose |
-|------|-----------------|---------|
-| **Tenant** | `DEFINE` | Top-level customer boundary |
-| **Workspace** | `MERGE` | Logical grouping within a tenant |
-| **Project** | `MERGE` | Application or service |
-| **Environment** | `MERGE` | Deployment stage (prod, staging, dev) |
+The hosted platform provisions a default set of scope types via its bootstrap policy, forming the multi-tenant control plane:
 
 ```
-Tenant (DEFINE)
-└── Workspace (MERGE)
-    └── Project (MERGE)
-        └── Environment (MERGE)
+Tenant
+└── Workspace
+    └── Project
+        └── Environment
 ```
+
+The permission mode for each of these is set by the platform bootstrap policy. Confirm the exact modes in your deployment's platform configuration rather than assuming—do not rely on a specific mode here without verifying it against the seeded policy.
 
 ## Custom Scope Types
 
-You can create custom scope types to match your domain:
+You can create custom scope types to match your domain. Pick each type's `permissionMode` based on whether scopes of that type should isolate (`override`) or draw authority from their ancestors (`inherit` / `additive`):
 
 ```bash
-# Create custom scope types for a construction company
+# Create custom scope types for a construction company.
+# The company root isolates (override); everything beneath accumulates (additive).
 curl -X POST 'https://api.example.com/scope-types/batch' \
+  -H 'Content-Type: application/json' \
   -d '[
-    {"id": "type_company", "name": "Company", "config": {"permissionMode": "define"}},
-    {"id": "type_division", "name": "Division", "config": {"permissionMode": "merge"}},
-    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
-    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
+    {"id": "type_company",  "name": "Company",  "config": {"permissionMode": "override"}},
+    {"id": "type_division", "name": "Division", "config": {"permissionMode": "additive"}},
+    {"id": "type_jobsite",  "name": "Job Site", "config": {"permissionMode": "additive"}},
+    {"id": "type_crew",     "name": "Crew",     "config": {"permissionMode": "additive"}}
   ]'
 
 # Define the hierarchy
 curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
   -d '[
-    {"parentTypeId": "type_company", "childTypeId": "type_division"},
+    {"parentTypeId": "type_company",  "childTypeId": "type_division"},
     {"parentTypeId": "type_division", "childTypeId": "type_jobsite"},
-    {"parentTypeId": "type_jobsite", "childTypeId": "type_crew"}
+    {"parentTypeId": "type_jobsite",  "childTypeId": "type_crew"}
   ]'
 ```
 
-## When to Use DEFINE vs MERGE
+## Choosing a Mode
 
-| Scenario | Recommended Mode | Reason |
-|----------|------------------|--------|
-| Tenant root | `DEFINE` | Complete isolation between tenants |
-| Workspace within tenant | `MERGE` | Inherit tenant-level settings |
-| Project within workspace | `MERGE` | Inherit workspace permissions |
-| Environment within project | `MERGE` | Inherit project permissions, override as needed |
-| Custom domain scopes (job sites, crews) | `MERGE` | Inherit from parent, add specific permissions |
-| Compliance boundary | `DEFINE` | Prevent permission leakage |
-
-## Example: Custom Scope Types Within a Project
-
-Projects can define custom scope types for their domain. For example, a construction management app:
-
-```bash
-# 1. Create custom scope types (these extend below Environment)
-curl -X POST 'https://api.example.com/scope-types/batch' \
-  -d '[
-    {"id": "type_jobsite", "name": "Job Site", "config": {"permissionMode": "merge"}},
-    {"id": "type_crew", "name": "Crew", "config": {"permissionMode": "merge"}}
-  ]'
-
-# 2. Define type hierarchy (Job Sites under Environments, Crews under Job Sites)
-curl -X POST 'https://api.example.com/scope-type-hierarchy/batch' \
-  -d '[
-    {"parentTypeId": "type_environment", "childTypeId": "type_jobsite"},
-    {"parentTypeId": "type_jobsite", "childTypeId": "type_crew"}
-  ]'
-
-# 3. Create actual scopes within a project's environment
-curl -X POST 'https://api.example.com/scopes/batch' \
-  -d '[
-    {"id": "scope_downtown", "typeId": "type_jobsite", "name": "Downtown Tower"},
-    {"id": "scope_electrical", "typeId": "type_crew", "name": "Electrical Team"}
-  ]'
-
-# 4. Link to the environment
-curl -X POST 'https://api.example.com/scope-hierarchy/batch' \
-  -d '[
-    {"parentScopeId": "scope_env_production", "childScopeId": "scope_downtown"},
-    {"parentScopeId": "scope_downtown", "childScopeId": "scope_electrical"}
-  ]'
-```
-
-This creates:
-```
-Project
-└── Environment (Production)
-    └── Job Site (Downtown Tower)
-        └── Crew (Electrical Team)
-```
+| Scenario | Mode | Reason |
+|----------|------|--------|
+| Isolated boundary (tenant root, compliance) | `override` | Grants never cross the boundary |
+| A role assigned mid-hierarchy should apply beneath it | `inherit` | Nearest ancestor with grants is used as a fallback |
+| Permissions accumulate down the tree | `additive` | Union of the scope's grants and all ancestor grants |
 
 ## API Reference
 
