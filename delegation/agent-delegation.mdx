@@ -62,7 +62,20 @@ curl -X POST 'https://api.example.com/role-assignments' \
   }'
 ```
 
-### 4. Evaluate with Delegation
+### 4. Create a Delegation Grant
+
+Delegation requires an active grant authorizing the agent to act for the user in the scope—without it the engine denies with `NO_DELEGATION_GRANT`:
+
+```bash
+curl -X POST 'https://api.example.com/delegation-grants' \
+  -d '{
+    "scopeId": "scope_engineering",
+    "actorSubjectId": "subject_coding_assistant",
+    "principalSubjectId": "subject_jane"
+  }'
+```
+
+### 5. Evaluate with Delegation
 
 ```typescript
 async function agentAction(agentId: string, userId: string, action: string, resource: any) {
@@ -177,15 +190,15 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_compliance",
     "roleId": "role_agent_writer",
     "permissionId": "perm_write",
-    "state": "disabled"
+    "state": "revoke"
   }'
 
-# Disable all agent access to PII
+# Deactivate all agent access to PII
 curl -X POST 'https://api.example.com/scope-overrides/roles' \
   -d '{
     "childScopeId": "scope_pii",
     "roleId": "role_agent_reader",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -194,18 +207,16 @@ curl -X POST 'https://api.example.com/scope-overrides/roles' \
 Use conditional permissions for time-based restrictions:
 
 ```bash
-curl -X POST 'https://api.example.com/permissions' \
+# Conditions live on the role-permission edge; the clock is the trusted server time
+curl -X POST 'https://api.example.com/role-permissions' \
   -d '{
-    "scopeId": "scope_org",
-    "action": "execute",
-    "resourceType": "deployment",
-    "resourcePattern": "*",
-    "key": "deployment:execute:*:business-hours",
-    "logic": {
+    "roleId": "role_deployer",
+    "permissionId": "perm_deploy_execute",
+    "condition": {
       "and": [
-        {">=": [{"var": "context.hour"}, 9]},
-        {"<=": [{"var": "context.hour"}, 17]},
-        {"in": [{"var": "context.dayOfWeek"}, [1, 2, 3, 4, 5]]}
+        {">=": [{"var": "time.hour"}, 9]},
+        {"<=": [{"var": "time.hour"}, 17]},
+        {"in": [{"var": "time.dayOfWeek"}, [1, 2, 3, 4, 5]]}
       ]
     }
   }'
