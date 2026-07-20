@@ -23,10 +23,9 @@ Collections are powerful for:
 | `name` | `string` | Display name |
 | `match` | `ResourceMatchDefinition` | Rules for matching resources |
 
-<Warning>
-  **Some match operators don't work yet** (schema/matcher mismatch—see the [roadmap](/roadmap)):
-  `time` matching is **non-functional** today, and the `fields` operators `eq`/`ne`/`nin`/`startsWith`/`endsWith`/`regex` are **silently ignored**. Reliable today: `tags`, `patterns` (matched as **regex**, not glob), `fields` with `in`/`gt`/`gte`/`lt`/`lte`/`contains`/bare-equality, `condition`, and `any`/`all`/`none`. A silently-ignored filter makes a collection match *more* than intended—verify before backing a policy with it.
-</Warning>
+<Note>
+  Supported match operators: **`fields`** — `eq`/`ne`/`gt`/`gte`/`lt`/`lte`/`in`/`nin`/`contains`/`startsWith`/`endsWith`/`regex` (plus bare-value equality, e.g. `{"status": "active"}`); **`time`** — `before`/`after`/`between` (absolute ISO timestamps); **`patterns`** — matched as a **regex** (`new RegExp`), not a glob; plus **`tags`**, **`condition`** (json-logic), and the **`any`/`all`/`none`** combinators.
+</Note>
 
 ## Match Definition
 
