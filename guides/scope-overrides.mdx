@@ -14,23 +14,26 @@ Bedrock supports three types of overrides:
 
 | Override Type | What it Controls | Use Case |
 |---------------|------------------|----------|
-| **Role Override** | Enable/disable an entire role at a scope | Disable "Admin" role in production |
-| **Permission Override** | Enable/disable a specific permission at a scope | Disable "delete" permission in compliance areas |
-| **Role-Permission Override** | Enable/disable a specific permission for a specific role at a scope | Disable "write" for "Editor" role in archived projects |
+| **Role Override** | `active` / `inactive` an entire role at a scope | Deactivate "Admin" in production |
+| **Permission Override** | `active` / `inactive` a specific permission at a scope | Deactivate "delete" in compliance areas |
+| **Role-Permission Override** | `grant` / `revoke` a permission for a specific role at a scope | Revoke "write" for "Editor" in archived projects |
 
 ## How Overrides Work
 
-Overrides are applied during permission resolution:
+Overrides are applied **per scope** during grant resolution:
 
 ```
-1. Get user's role assignments
-2. Get permissions for those roles
-3. Apply scope overrides (most specific scope wins)
-4. Return effective permissions
+1. Resolve the subject's grants at the request scope (per its permissionMode)
+2. Apply THAT scope's overrides (role active/inactive, permission active/inactive,
+   role-permission grant/revoke)
+3. Return the effective grants
 ```
 
 <Note>
-  Overrides only affect inherited permissions. They don't grant new permissions—they can only enable or disable existing ones.
+  Overrides are per-scope, **not** a top-down cascade: an override set at a parent scope does
+  not automatically apply to children evaluated under the default `override` mode. A
+  role-permission `grant` can add a grant for a role the subject already holds; `revoke`/
+  `inactive` remove grants. See [Scope Overrides](/concepts/overrides) for the full model.
 </Note>
 
 ## Role Overrides
@@ -54,7 +57,7 @@ curl -X POST 'https://api.example.com/scope-overrides/roles' \
   -d '{
     "childScopeId": "scope_production",
     "roleId": "role_admin",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -63,9 +66,9 @@ Now users with the Admin role won't have admin access in the production scope.
 ### Updating Role Overrides
 
 ```bash
-# Re-enable the role
+# Re-activate the role
 curl -X PUT 'https://api.example.com/scope-overrides/roles/override_123' \
-  -d '{"state": "enabled"}'
+  -d '{"state": "active"}'
 ```
 
 ## Permission Overrides
@@ -77,14 +80,14 @@ Disable or enable a specific permission at a scope.
 ```bash
 # Delete permission exists at org level
 curl -X POST 'https://api.example.com/permissions' \
-  -d '{"name": "delete:records", "scopeId": "scope_org"}'
+  -d '{"scopeId": "scope_org", "action": "delete", "resourceType": "record", "resourcePattern": "*", "key": "record:delete:*"}'
 
 # Disable delete in compliance scope
 curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_compliance",
     "permissionId": "perm_delete_records",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -96,7 +99,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_production",
     "permissionId": "perm_execute_code",
-    "state": "disabled"
+    "state": "inactive"
   }'
 ```
 
@@ -117,7 +120,7 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_archived_projects",
     "roleId": "role_editor",
     "permissionId": "perm_delete",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
 
@@ -137,27 +140,13 @@ curl -X POST 'https://api.example.com/scope-overrides/role-permissions' \
     "childScopeId": "scope_customer_data",
     "roleId": "role_agent_writer",
     "permissionId": "perm_write",
-    "state": "disabled"
+    "state": "revoke"
   }'
 ```
 
-## Override Precedence
+## Overrides Are Per-Scope
 
-When multiple overrides could apply, the most specific one wins:
-
-```
-Organization (no overrides)
-    ↓
-Department (permission override: disable delete)
-    ↓
-Team (role-permission override: enable delete for Admin)
-    ↓
-Project (no overrides - inherits from Team)
-```
-
-In this example:
-- Most users can't delete in the Department or below
-- But Admins CAN delete in the Team and Project (role-permission override)
+Overrides are applied at the scope where they are set—there is **no** cross-scope "most specific wins" precedence and **no** automatic top-down cascade. Under the default `override` `permissionMode`, only the request scope's own overrides apply; under `inherit`/`additive`, each scope's overrides apply to that scope's grants as they compose. To restrict at multiple scopes, set the override at each. See [Scope Overrides](/concepts/overrides) and [Scope Types](/concepts/scope-types).
 
 ## Viewing Overrides
 
@@ -198,9 +187,9 @@ Restrict dangerous operations in production:
 curl -X POST 'https://api.example.com/scope-overrides/permissions/batch' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"childScopeId": "scope_prod", "permissionId": "perm_delete", "state": "disabled"},
-    {"childScopeId": "scope_prod", "permissionId": "perm_execute", "state": "disabled"},
-    {"childScopeId": "scope_prod", "permissionId": "perm_modify_infra", "state": "disabled"}
+    {"childScopeId": "scope_prod", "permissionId": "perm_delete", "state": "inactive"},
+    {"childScopeId": "scope_prod", "permissionId": "perm_execute", "state": "inactive"},
+    {"childScopeId": "scope_prod", "permissionId": "perm_modify_infra", "state": "inactive"}
   ]'
 ```
 
@@ -213,8 +202,8 @@ Restrict agent capabilities in sensitive areas:
 curl -X POST 'https://api.example.com/scope-overrides/role-permissions/batch' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"childScopeId": "scope_customer_data", "roleId": "role_agent", "permissionId": "perm_write", "state": "disabled"},
-    {"childScopeId": "scope_pii", "roleId": "role_agent", "permissionId": "perm_read", "state": "disabled"}
+    {"childScopeId": "scope_customer_data", "roleId": "role_agent", "permissionId": "perm_write", "state": "revoke"},
+    {"childScopeId": "scope_pii", "roleId": "role_agent", "permissionId": "perm_read", "state": "revoke"}
   ]'
 ```
 
@@ -228,7 +217,7 @@ curl -X POST 'https://api.example.com/scope-overrides/permissions' \
   -d '{
     "childScopeId": "scope_affected_service",
     "permissionId": "perm_write",
-    "state": "disabled"
+    "state": "inactive"
   }'
 
 # After incident: remove override
@@ -244,9 +233,9 @@ Create compliance zones with restricted access:
 curl -X POST 'https://api.example.com/scope-overrides/permissions/batch' \
   -H 'Content-Type: application/json' \
   -d '[
-    {"childScopeId": "scope_soc2", "permissionId": "perm_export_data", "state": "disabled"},
-    {"childScopeId": "scope_hipaa", "permissionId": "perm_share_external", "state": "disabled"},
-    {"childScopeId": "scope_hipaa", "permissionId": "perm_export_data", "state": "disabled"}
+    {"childScopeId": "scope_soc2", "permissionId": "perm_export_data", "state": "inactive"},
+    {"childScopeId": "scope_hipaa", "permissionId": "perm_share_external", "state": "inactive"},
+    {"childScopeId": "scope_hipaa", "permissionId": "perm_export_data", "state": "inactive"}
   ]'
 ```
 
