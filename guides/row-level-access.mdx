@@ -8,6 +8,20 @@ icon: 'table'
 
 Row-level access control (RLAC) restricts access to individual records based on attributes of the user and the record. Instead of "can read all documents", it's "can read documents they own" or "can read documents in their department".
 
+<Warning>
+  **Several patterns below are not enforced yet.** A json-logic condition can only read what the
+  engine puts in the context. Today that is: the acting **subject** (`subject.id`,
+  `subject.subjectType`, `subject.meta.*`), the **resource**'s core fields (`resource.id`,
+  `resource.resourceType`, `resource.ownerScopeId`, `resource.displayName`), the resource's
+  **tags** (top-level `tags` / `tagList`), the trusted clock (`time.*`), and any top-level custom
+  `context` keys. It does **not** yet expose `subject.tags.*`, `resource.createdBy`,
+  `resource.ownerId`, or `resource.meta.*`, so patterns using those **never grant today** (see the
+  [roadmap](/roadmap)). Two things that work now: for **owner-based** access use resource
+  **ownership** (an `owns(subject, resource, role)` grant) rather than a `resource.createdBy`
+  condition; for attribute rules use resource **tags** and `subject.meta.*`. Also, conditions
+  attach to the **role-permission edge** (`condition`), not a permission `logic` field.
+</Warning>
+
 ## Patterns
 
 ### Pattern 1: Owner-Based Access
@@ -235,10 +249,7 @@ For list views, pre-filter at the database level:
 ```typescript
 async function getAccessibleDocuments(userId: string, scopeId: string) {
   // Get user's effective permissions
-  const permissions = await bedrock.getEffectivePermissions({
-    subjectId: userId,
-    scopeId
-  });
+  const permissions = await bedrock.listEffectivePermissions(userId, scopeId);
 
   // Extract conditions from permissions
   const conditions = extractConditions(permissions, "document", "read");
@@ -279,24 +290,26 @@ async function filterAccessibleDocuments(
 }
 ```
 
-### Bulk Evaluation
+### Checking Many Resources
 
-Evaluate multiple resources at once:
+There is no bulk evaluate API—call `evaluate` per resource, in parallel:
 
 ```typescript
-async function checkAccessBulk(
+async function checkAccessMany(
   userId: string,
   scopeId: string,
   resourceIds: string[]
 ) {
-  const inputs = resourceIds.map(resourceId => ({
-    actor: { subjectId: userId, subjectType: "user" },
-    scopeId,
-    action: "read",
-    resource: { resourceId }
-  }));
-
-  const decisions = await bedrock.evaluateBulk(inputs);
+  const decisions = await Promise.all(
+    resourceIds.map((resourceId) =>
+      bedrock.evaluate({
+        actor: { subjectId: userId, subjectType: "user" },
+        scopeId,
+        action: "read",
+        resource: { resourceId },
+      })
+    )
+  );
 
   return resourceIds.filter((_, i) => decisions[i].allowed);
 }
@@ -311,8 +324,8 @@ async function checkAccessBulk(
   <Accordion title="Pre-filter when possible">
     Convert simple conditions to database queries rather than post-filtering.
   </Accordion>
-  <Accordion title="Use bulk evaluation">
-    Evaluate multiple resources in one call rather than individual calls.
+  <Accordion title="Evaluate in parallel, and cache">
+    There is no bulk evaluate API; issue per-resource `evaluate` calls in parallel and cache decisions for repeated user/resource/action combinations.
   </Accordion>
   <Accordion title="Denormalize for read performance">
     Store computed access lists on resources for fast filtering.
