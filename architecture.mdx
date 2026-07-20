@@ -45,28 +45,27 @@ Bedrock is a modular authorization engine with three main layers:
 ### BedrockEngine
 
 The central authorization engine that:
-- Manages all authorization entities (scopes, subjects, roles, permissions, resources)
-- Evaluates permission checks
-- Handles inheritance and overrides
-- Processes resource policies and collections
+- Evaluates permission checks (`evaluate()`) and lists effective permissions
+- Composes grants across the scope chain per `permissionMode`
+- Applies overrides, resource policies, ownership, and the resource-hierarchy fallback
+
+It is **read/evaluate-only**—entity writes go through the REST API (`api-management`), not the engine.
 
 ```typescript
-import { BedrockEngine } from '@bedrock/core';
-import { PostgresStorage } from '@bedrock/storage-postgres';
+import { BedrockEngine } from '@quarry-systems/bedrock-core';
+import { createPostgresStore } from '@quarry-systems/bedrock-core-storage';
 
-const storage = new PostgresStorage(connectionString);
-const engine = new BedrockEngine(storage);
+const engine = new BedrockEngine(createPostgresStore({ connectionString: process.env.DATABASE_URL }));
 ```
 
-### BedrockStorage
+### BedrockStore
 
-The storage interface that abstracts data persistence:
+The storage interface (`BedrockStore`) the engine reads through:
 
 | Implementation | Use Case |
 |----------------|----------|
-| `PostgresStorage` | Production deployments |
-| `InMemoryStorage` | Testing and development |
-| Custom | Your own database |
+| `createPostgresStore` / `PostgresBedrockStore` | Postgres (the only shipped store) |
+| Custom | Implement `BedrockStore` for your own backend |
 
 ### REST API
 
@@ -94,7 +93,7 @@ POST /evaluate
 │       │                    │                                    │
 │       │                    │                                    │
 │       ▼                    ▼                                    │
-│   (DEFINE/MERGE)      Membership ◀── Subject                   │
+│  (permissionMode)     Membership ◀── Subject                   │
 │                            │                                    │
 │                            ▼                                    │
 │                     RoleAssignment ──▶ Role ──▶ Permission     │
@@ -134,44 +133,21 @@ POST /evaluate
 When `engine.evaluate()` is called:
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      EVALUATION INPUT                           │
-│  { actor, scopeId, action, resource, context }                  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  1. RESOURCE POLICIES                                           │
-│     • Find policies targeting this resource                     │
-│     • Find collections matching this resource                   │
-│     • Evaluate subject/context conditions                       │
-│     • If match → return allow/deny                              │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  2. RESOURCE HIERARCHY                                          │
-│     • Check parent resources (if cascade: inherit)              │
-│     • Traverse ancestors until permission found                 │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  3. ROLE-BASED PERMISSIONS                                      │
-│     • Resolve subject memberships in scope hierarchy            │
-│     • Collect role assignments                                  │
-│     • Gather permissions from roles                             │
-│     • Apply scope overrides                                     │
-│     • Match action/resource pattern                             │
-│     • Evaluate conditional permissions                          │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      EVALUATION OUTPUT                          │
-│  { allowed, matches, explanation, evaluatedPolicy, ... }        │
-└─────────────────────────────────────────────────────────────────┘
+INPUT: { actor, onBehalfOf?, scopeId, action, resource, context }
+  │
+  ▼
+1. Reachability gate  → resource reachable in the scope? (when the gate is enabled)
+2. Delegation grant   → required when onBehalfOf is set (else NO_DELEGATION_GRANT)
+3. Resource policies  → highest-priority matching group; deny beats allow within it
+4. Role-based perms   → grants composed per permissionMode; overrides; conditions (fail-closed)
+5. Ownership          → an owner-role grant on an owned resource
+6. Resource hierarchy → a parent resource grants via a cascade: inherit edge
+  │
+  ▼
+OUTPUT: { allowed, matches, explanation, ... }
 ```
+
+See [Evaluation](/concepts/evaluation) for the exact flow (delegation and the hierarchy fallback are conditional legs).
 
 ## ID Format
 
@@ -195,25 +171,27 @@ All Bedrock entities use prefixed UUIDv7 IDs:
 Use Bedrock directly in your application:
 
 ```typescript
-import { BedrockEngine } from '@bedrock/core';
-import { PostgresStorage } from '@bedrock/storage-postgres';
+import { BedrockEngine } from '@quarry-systems/bedrock-core';
+import { createPostgresStore } from '@quarry-systems/bedrock-core-storage';
 
-const engine = new BedrockEngine(new PostgresStorage(process.env.DATABASE_URL));
+const engine = new BedrockEngine(createPostgresStore({ connectionString: process.env.DATABASE_URL }));
 ```
 
-### Standalone Service
+A self-hosted embed runs the engine as a **library** (no `api-management`, no console); setup is script/API-driven.
 
-Deploy as a separate authorization service:
+### Managed Service (api-management)
+
+Run `api-management`—the full multi-tenant control plane (REST API, tenants/workspaces/projects, Kinde-backed identity, plus Redis and the Angular console). Consumers call it over HTTP:
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│   App 1     │──────│   Bedrock   │──────│  PostgreSQL │
-├─────────────┤      │   Service   │      └─────────────┘
-│   App 2     │──────│             │
-├─────────────┤      │  REST API   │
-│   App 3     │──────│             │
-└─────────────┘      └─────────────┘
+┌─────────────┐      ┌──────────────────┐      ┌─────────────┐
+│   App 1     │──────│  api-management  │──────│  PostgreSQL │
+├─────────────┤      │  (REST + Kinde)  │      ├─────────────┤
+│   App 2     │──────│                  │──────│    Redis    │
+└─────────────┘      └──────────────────┘      └─────────────┘
 ```
+
+These are the two real deployment shapes: the **embedded library** (self-hosted engine) and the **managed service** (hosted platform with the console).
 
 ## Next Steps
 

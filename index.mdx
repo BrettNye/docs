@@ -46,13 +46,13 @@ Bedrock solves authorization problems traditional RBAC cannot:
 ## How It Works
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     EVALUATION ORDER                            │
-├─────────────────────────────────────────────────────────────────┤
-│  1. Resource Policies    →  Explicit allow/deny on resources    │
-│  2. Resource Hierarchy   →  Inherit from parent resources       │
-│  3. Role-Based Perms     →  Subject → Scope → Role → Permission │
-└─────────────────────────────────────────────────────────────────┘
+EVALUATION ORDER
+  1. Reachability gate   → resource must be reachable in the scope (when enabled)
+  2. Delegation grant    → required when acting on behalf of another subject
+  3. Resource policies   → explicit allow/deny (deny wins within the top priority group)
+  4. Role-based perms    → subject → scope → role → permission (composed per permissionMode)
+  5. Ownership           → an owner-role grant on an owned resource
+  6. Resource hierarchy  → a parent resource can grant via a cascade: inherit edge
 ```
 
 <Card title="Learn about Evaluation" icon="gears" href="/concepts/evaluation">
@@ -69,41 +69,41 @@ Bedrock solves authorization problems traditional RBAC cannot:
 | **Subject** | Actor: user, service, agent, api_key | [Subjects →](/concepts/subjects) |
 | **Role** | Bundle of permissions assigned to subjects | [Roles →](/concepts/roles) |
 | **Permission** | Action + resource type + pattern | [Permissions →](/concepts/permissions) |
-| **Resource** | Protected object with type and owner | [Resources →](/resources/resources) |
+| **Resource** | Protected object with type and owner | [Resources →](/resources/index) |
 | **Collection** | Dynamic resource group via match rules | [Collections →](/resources/resource-collections) |
 | **Policy** | Allow/deny rule on resource or collection | [Policies →](/resources/resource-policies) |
-| **Tag** | Metadata for conditional access | [Tags →](/tags/tags) |
+| **Tag** | Metadata for conditional access | [Tags →](/tags/index) |
 
 ---
 
 ## Quick Example
 
+Set up your authorization structure via the **REST API**, then evaluate. The engine is **read/evaluate-only**—all writes go through the API.
+
+```bash
+# 1. Create a scope, role, permission, and link them
+curl -X POST '.../scopes'           -d '{"typeId":"org","name":"Acme Corp"}'
+curl -X POST '.../roles'            -d '{"name":"Editor","scopeId":"scope_acme"}'
+curl -X POST '.../permissions'      -d '{"scopeId":"scope_acme","action":"write","resourceType":"document","resourcePattern":"*","key":"document:write:*"}'
+curl -X POST '.../role-permissions' -d '{"roleId":"role_editor","permissionId":"perm_1"}'
+
+# 2. Add the subject as a member and assign the role
+curl -X POST '.../memberships'      -d '{"subjectId":"subject_jane","scopeId":"scope_acme"}'
+curl -X POST '.../role-assignments' -d '{"membershipId":"membership_1","roleId":"role_editor"}'
+```
+
 ```typescript
-import { BedrockEngine } from '@bedrock/core';
+// 3. Evaluate with the embedded engine
+import { BedrockEngine } from '@quarry-systems/bedrock-core';
+import { createPostgresStore } from '@quarry-systems/bedrock-core-storage';
 
-// 1. Create engine with your storage
-const bedrock = new BedrockEngine(storage);
+const bedrock = new BedrockEngine(createPostgresStore({ connectionString: process.env.DATABASE_URL }));
 
-// 2. Set up your authorization structure
-await bedrock.createScope({ id: 'scope_acme', name: 'Acme Corp' });
-await bedrock.createRole({ id: 'role_editor', scopeId: 'scope_acme', name: 'Editor' });
-await bedrock.createPermission({ 
-  scopeId: 'scope_acme', 
-  action: 'write', 
-  resourceType: 'document',
-  resourcePattern: '*'
-});
-
-// 3. Assign role to subject
-await bedrock.createMembership({ subjectId: 'user_jane', scopeId: 'scope_acme' });
-await bedrock.createRoleAssignment({ membershipId: 'membership_1', roleId: 'role_editor' });
-
-// 4. Evaluate permissions
 const decision = await bedrock.evaluate({
-  actor: { subjectId: 'user_jane', subjectType: 'user' },
+  actor: { subjectId: 'subject_jane', subjectType: 'user' },
   scopeId: 'scope_acme',
   action: 'write',
-  resource: { resourceType: 'document', resourcePattern: '*' }
+  resource: { resourceType: 'document', resourcePattern: '*' },
 });
 
 console.log(decision.allowed); // true
@@ -145,25 +145,18 @@ As organizations deploy AI agents (LLM-powered assistants, autonomous workflows,
 | How do I audit agent actions? | Unified subject model |
 | How do I revoke agent access? | Same as revoking user access |
 
-Bedrock treats agents as first-class subjects:
+Bedrock treats agents as first-class subjects (registered via the REST API, same as any subject):
 
-```typescript
-// Register an AI agent
-await bedrock.createSubject({ 
-  id: 'agent_assistant',
-  type: 'agent',
-  externalId: 'openai-assistant-123'
-});
+```bash
+# Register an AI agent
+curl -X POST '.../subjects' \
+  -d '{"subjectType":"agent","externalId":"openai-assistant-123"}'
 
-// Add to scope with restricted role
-await bedrock.createMembership({ 
-  subjectId: 'agent_assistant', 
-  scopeId: 'scope_production' 
-});
-await bedrock.createRoleAssignment({ 
-  membershipId: 'membership_agent',
-  roleId: 'role_readonly'  // Agents get read-only in production
-});
+# Add to a scope with a restricted role (read-only in production)
+curl -X POST '.../memberships' \
+  -d '{"subjectId":"agent_assistant","scopeId":"scope_production"}'
+curl -X POST '.../role-assignments' \
+  -d '{"membershipId":"membership_agent","roleId":"role_readonly"}'
 ```
 
 <Card title="Agent Governance Guide" icon="robot" href="/guides/agent-governance">
