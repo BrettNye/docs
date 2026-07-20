@@ -6,7 +6,9 @@ icon: 'sliders'
 
 ## What are Scope Overrides?
 
-**Scope overrides** let you adjust how roles and permissions resolve **at a specific scope** without changing the role or permission definitions. You can deactivate a role, deactivate a permission, or grant/revoke a specific role-permission combination at that scope.
+**Scope overrides** let you adjust how roles and permissions resolve **at a specific scope** without changing the underlying role or permission definitions. You can deactivate a role, deactivate a permission, or grant/revoke a specific role-permission combination at that scope.
+
+This is **by design a per-scope mechanism**: it lets different scopes—especially **environments**—run their own variant of the same shared roles and permissions. Turn a role or permission off in `production` while it stays on in `staging`, or grant an extra (optionally conditional) role-permission only in `dev`—all without forking the definitions. Overrides are *not* a top-down safety cascade; each scope declares its own variant.
 
 <Note>
   Overrides do **not** grant memberships. A subject's role memberships are resolved per the request scope's [`permissionMode`](/concepts/scope-types) (by default, at the exact scope of the request). Overrides only enable, disable, grant, or revoke roles/permissions for subjects whose grants are already being resolved at that scope.
