@@ -241,9 +241,7 @@
               "api-reference/resources/update-resource",
               "api-reference/resources/delete-resource",
               "api-reference/resources/get-resource-parent",
-              "api-reference/resources/get-resource-children",
-              "api-reference/resources/get-resource-ancestors",
-              "api-reference/resources/update-resource-hierarchy-edge"
+              "api-reference/resources/get-resource-children",              "api-reference/resources/update-resource-hierarchy-edge"
             ]
           },
           {
@@ -262,9 +260,7 @@
             "pages": [
               "api-reference/resource-collections/get-resource-collections",
               "api-reference/resource-collections/get-resource-collection",
-              "api-reference/resource-collections/create-resource-collection",
-              "api-reference/resource-collections/create-resource-collections-batch",
-              "api-reference/resource-collections/update-resource-collection",
+              "api-reference/resource-collections/create-resource-collection",              "api-reference/resource-collections/update-resource-collection",
               "api-reference/resource-collections/delete-resource-collection"
             ]
           },
@@ -273,9 +269,7 @@
             "pages": [
               "api-reference/resource-policies/get-resource-policies",
               "api-reference/resource-policies/get-resource-policy",
-              "api-reference/resource-policies/create-resource-policy",
-              "api-reference/resource-policies/create-resource-policies-batch",
-              "api-reference/resource-policies/update-resource-policy",
+              "api-reference/resource-policies/create-resource-policy",              "api-reference/resource-policies/update-resource-policy",
               "api-reference/resource-policies/delete-resource-policy"
             ]
           },
@@ -360,11 +354,7 @@
           },
           {
             "group": "Users",
-            "pages": [
-              "api-reference/users/get-users",
-              "api-reference/users/get-user",
-              "api-reference/users/create-user",
-              "api-reference/users/update-user",
+            "pages": [              "api-reference/users/get-user",              "api-reference/users/update-user",
               "api-reference/users/delete-user"
             ]
           },

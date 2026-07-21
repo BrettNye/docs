@@ -1,6 +1,6 @@
 ---
 title: 'Update User'
-api: 'PATCH /users/{id}'
+api: 'PUT /users/{id}'
 description: 'Update a user'
 ---
 
@@ -44,7 +44,7 @@ Returns the updated user object.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'https://api.example.com/users/user_jane' \
+curl -X PUT 'https://api.example.com/users/user_jane' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{
