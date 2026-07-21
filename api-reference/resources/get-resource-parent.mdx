@@ -1,12 +1,12 @@
 ---
-title: 'Get Resource Parent'
-api: 'GET /resource-hierarchy/parent/{resourceId}'
-description: 'Get the parent resource in the hierarchy'
+title: 'Get Resource Parents'
+api: 'GET /resource-hierarchy/parents/{childResourceId}'
+description: 'Get the direct parent edges of a resource in the hierarchy'
 ---
 
 ## Path Parameters
 
-<ParamField path="resourceId" type="string" required>
+<ParamField path="childResourceId" type="string" required>
   The child resource ID
 </ParamField>
 
@@ -16,7 +16,7 @@ Returns the parent resource, or 404 if no parent exists.
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'https://api.example.com/resource-hierarchy/parent/resource_doc_456' \
+curl -X GET 'https://api.example.com/resource-hierarchy/parents/resource_doc_456' \
   -H 'Authorization: Bearer YOUR_TOKEN'
 ```
 </RequestExample>

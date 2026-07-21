@@ -1,6 +1,6 @@
 ---
 title: 'Update API Key'
-api: 'PATCH /api-keys/{id}'
+api: 'PUT /api-keys/{id}'
 description: 'Update an API key'
 ---
 
@@ -38,7 +38,7 @@ Returns the updated API key object.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'https://api.example.com/api-keys/apk_001' \
+curl -X PUT 'https://api.example.com/api-keys/apk_001' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{

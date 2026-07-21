@@ -1,18 +1,18 @@
 ---
-title: 'Get Projects'
-api: 'GET /projects'
-description: 'List projects with optional filters'
+title: 'List Projects by Tenant'
+api: 'GET /projects/tenant/{tenantId}'
+description: 'List all projects in a tenant'
 ---
 
-## Query Parameters
+## Path Parameters
 
-<ParamField query="tenantId" type="string">
-  Filter by tenant ID
+<ParamField path="tenantId" type="string" required>
+  The tenant ID
 </ParamField>
 
-<ParamField query="workspaceId" type="string">
-  Filter by workspace ID
-</ParamField>
+<Note>
+  Projects can also be listed by workspace: `GET /projects/workspace/{workspaceId}`.
+</Note>
 
 ## Response
 
@@ -20,7 +20,7 @@ Returns an array of project objects.
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'https://api.example.com/projects?workspaceId=workspace_main' \
+curl -X GET 'https://api.example.com/projects/tenant/tenant_acme' \
   -H 'Authorization: Bearer YOUR_TOKEN'
 ```
 </RequestExample>

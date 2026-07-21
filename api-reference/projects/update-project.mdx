@@ -1,6 +1,6 @@
 ---
 title: 'Update Project'
-api: 'PATCH /projects/{id}'
+api: 'PUT /projects/{id}'
 description: 'Update a project'
 ---
 
@@ -22,7 +22,7 @@ Returns the updated project object.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'https://api.example.com/projects/project_api' \
+curl -X PUT 'https://api.example.com/projects/project_api' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{

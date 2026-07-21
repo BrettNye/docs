@@ -1,6 +1,6 @@
 ---
 title: 'Update Workspace'
-api: 'PATCH /workspaces/{id}'
+api: 'PUT /workspaces/{id}'
 description: 'Update a workspace'
 ---
 
@@ -22,7 +22,7 @@ Returns the updated workspace object.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'https://api.example.com/workspaces/workspace_main' \
+curl -X PUT 'https://api.example.com/workspaces/workspace_main' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{

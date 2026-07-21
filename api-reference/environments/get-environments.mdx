@@ -1,18 +1,18 @@
 ---
-title: 'Get Environments'
-api: 'GET /environments'
-description: 'List environments with optional filters'
+title: 'List Environments by Tenant'
+api: 'GET /environments/tenant/{tenantId}'
+description: 'List all environments in a tenant'
 ---
 
-## Query Parameters
+## Path Parameters
 
-<ParamField query="tenantId" type="string">
-  Filter by tenant ID
+<ParamField path="tenantId" type="string" required>
+  The tenant ID
 </ParamField>
 
-<ParamField query="projectId" type="string">
-  Filter by project ID
-</ParamField>
+<Note>
+  Environments can also be listed by project: `GET /environments/project/{projectId}`.
+</Note>
 
 ## Response
 
@@ -20,7 +20,7 @@ Returns an array of environment objects.
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'https://api.example.com/environments?projectId=project_api' \
+curl -X GET 'https://api.example.com/environments/tenant/tenant_acme' \
   -H 'Authorization: Bearer YOUR_TOKEN'
 ```
 </RequestExample>

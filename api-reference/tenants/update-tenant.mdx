@@ -1,6 +1,6 @@
 ---
 title: 'Update Tenant'
-api: 'PATCH /tenants/{id}'
+api: 'PUT /tenants/{id}'
 description: 'Update a tenant'
 ---
 
@@ -64,7 +64,7 @@ Returns the updated tenant object.
 
 <RequestExample>
 ```bash cURL
-curl -X PATCH 'https://api.example.com/tenants/tenant_acme' \
+curl -X PUT 'https://api.example.com/tenants/tenant_acme' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   -H 'Content-Type: application/json' \
   -d '{

@@ -1,13 +1,13 @@
 ---
-title: 'Get Workspaces'
-api: 'GET /workspaces'
-description: 'List workspaces with optional filters'
+title: 'List Workspaces by Tenant'
+api: 'GET /workspaces/tenant/{tenantId}'
+description: 'List all workspaces in a tenant'
 ---
 
-## Query Parameters
+## Path Parameters
 
-<ParamField query="tenantId" type="string">
-  Filter by tenant ID
+<ParamField path="tenantId" type="string" required>
+  The tenant ID
 </ParamField>
 
 ## Response
@@ -16,7 +16,7 @@ Returns an array of workspace objects.
 
 <RequestExample>
 ```bash cURL
-curl -X GET 'https://api.example.com/workspaces?tenantId=tenant_acme' \
+curl -X GET 'https://api.example.com/workspaces/tenant/tenant_acme' \
   -H 'Authorization: Bearer YOUR_TOKEN'
 ```
 </RequestExample>
